@@ -4,7 +4,10 @@ from vk_messages import VkMessage, VkPolling
 import vk
 import threading
 import re
+import logging
 from credentials import token, vk_app_id
+
+logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
 
 vk_threads = {}
 
