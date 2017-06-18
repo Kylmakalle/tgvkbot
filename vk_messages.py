@@ -15,7 +15,11 @@ class VkPolling:
                 messages = vk_user.get_new_messages()
                 if messages:
                     for m in messages:
-                        bot.send_message(chat_id, m, parse_mode='HTML')
+                        if m.split('">&#8203;</a>')[0][-1]:
+                            bot.send_message(chat_id, m, parse_mode='HTML', disable_notification=True)
+                        else:
+                            bot.send_message(chat_id, m, parse_mode='HTML')
+
             except Exception as e:
                 print('Error: {}'.format(e))
             for i in range(35):
@@ -42,7 +46,6 @@ class VkMessage:
         if count == 0:
             pass
         else:
-            print(msgs)
             messages = msgs[1:]
             for m in messages:
                 if not m['out'] and m['body']:

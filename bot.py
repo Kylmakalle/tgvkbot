@@ -4,12 +4,13 @@ from vk_messages import VkMessage, VkPolling
 import vk
 import threading
 import re
+from credentials import token, vk_app_id
 
 vk_threads = {}
 
 vk_tokens = {}
 
-vk_app_id = "5988748"
+bot = telebot.AsyncTeleBot(token)
 
 link = 'https://oauth.vk.com/authorize?client_id={}&' \
        'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages' \
@@ -29,7 +30,19 @@ def create_thread(message, vk_token):
     vk_tokens[str(message.from_user.id)] = vk_token
 
 
-bot = telebot.AsyncTeleBot('**********')
+def check_thread(message):
+    for th in threading.enumerate():
+        if th.getName() == 'vk' + str(message.from_user.id):
+            return False
+    return True
+
+
+def stop_thread(message):
+    for th in threading.enumerate():
+        if th.getName() == 'vk' + str(message.from_user.id):
+            t = vk_threads[str(message.from_user.id)]
+            t.terminate()
+            th.join()
 
 
 def extract_unique_code(text):
@@ -51,21 +64,6 @@ def verifycode(code):
 def info_extractor(info):
     info = info[0].url[8:-3].split('.')
     return info
-
-
-def check_thread(message):
-    for th in threading.enumerate():
-        if th.getName() == 'vk' + str(message.from_user.id):
-            return False
-    return True
-
-
-def stop_thread(message):
-    for th in threading.enumerate():
-        if th.getName() == 'vk' + str(message.from_user.id):
-            t = vk_threads[str(message.from_user.id)]
-            t.terminate()
-            th.join()
 
 
 @bot.message_handler(commands=['stop'])
