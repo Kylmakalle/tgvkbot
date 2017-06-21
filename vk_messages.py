@@ -1,5 +1,7 @@
 import vk
 import time
+import requests
+import wget
 
 
 class VkPolling:
@@ -11,22 +13,139 @@ class VkPolling:
 
     def run(self, vk_user, bot, chat_id):
         while self._running:
+            updates = []
             try:
-                messages = vk_user.get_new_messages()
-                if messages:
-                    for m in messages:
-                        if m.split('">&#8203;</a>')[0][-1]:
-                            bot.send_message(chat_id, m, parse_mode='HTML', disable_notification=True)
-                        else:
-                            bot.send_message(chat_id, m, parse_mode='HTML')
-
+                updates = vk_user.get_new_messages()
             except Exception as e:
                 print('Error: {}'.format(e))
-            for i in range(35):
+            if updates:
+                handle_updates(vk_user, bot, chat_id, updates)
+            for i in range(45):
                 if self._running:
                     time.sleep(0.1)
                 else:
                     break
+
+
+def handle_messages(m, vk_user, bot, chat_id):
+    user = vk.API(vk_user.session).users.get(user_ids=m["uid"], fields=[])[0]
+    if 'body' in m and not 'attachment' in m:
+        data = add_reply_info(m, user["first_name"], user["last_name"]) + '{}'.format(m["body"].replace('<br>', '\n'))
+        bot.send_message(chat_id, data, parse_mode='HTML',
+                         disable_notification=check_notification(m)).wait()
+    if 'attachment' in m:
+        attachment_handler(m, user, bot, chat_id)
+
+
+def handle_updates(vk_user, bot, chat_id, updates):
+    for m in updates:
+        if True:  # not m['out']:
+            print(m)
+            handle_messages(m, vk_user, bot, chat_id)
+
+
+def attachment_handler(m, user, bot, chat_id):
+    if m['attachment']['type'] == 'photo':
+        for photo in m['attachments']:
+            data = add_reply_info(m, user['first_name'], user['last_name']) + '<a href="{}">Фото</a>'.format(
+                get_max_src(photo['photo']))
+            bot.send_message(chat_id, data, parse_mode='HTML',
+                             disable_notification=check_notification(m)).wait()
+    if m['attachment']['type'] == 'video':
+        for vid in m['attachments']:
+            link = 'https://vk.com/video{}_{}'.format(vid['video']['owner_id'],
+                                                      vid['video']['vid'])
+            data = add_reply_info(m, user['first_name'], user['last_name']) + '<a href="{}">Видео</a>'.format(link)
+            bot.send_message(chat_id, data, parse_mode='HTML',
+                             disable_notification=check_notification(m)).wait()
+    if m['attachment']['type'] == 'audio':
+        for audio in m['attachments']:
+            data = add_reply_info(m, user['first_name'], user['last_name']) + '🎵 <code>{} - {}</code>'.format(
+                audio['audio']['artist'],
+                audio['audio']['title'])
+            bot.send_message(chat_id, data, parse_mode='HTML',
+                             disable_notification=check_notification(m)).wait()
+    if m['attachment']['type'] == 'doc':
+        for doc in m['attachments']:
+            if doc['doc']['ext'] == 'gif':
+                link = doc['doc']['url']
+                data = add_reply_info(m, user["first_name"], user["last_name"]) + '<a href="{}">GIF</a>'.format(link)
+                bot.send_message(chat_id, data, parse_mode='HTML',
+                                 disable_notification=check_notification(m)).wait()
+
+            if doc['doc']['ext'] == 'pdf' or doc['doc']['ext'] == 'zip':
+                link = doc['doc']['url']
+                data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<a href="{}">Документ</a>'.format(
+                    link)
+                bot.send_message(chat_id, data, parse_mode='HTML',
+                                 disable_notification=check_notification(m)).wait()
+
+            if doc['doc']['ext'] == 'jpg' or doc['doc']['ext'] == 'png':
+                link = doc['doc']['url']
+                data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<i>Документ</i>'
+                bot.send_message(chat_id, data, parse_mode='HTML',
+                                 disable_notification=check_notification(m)).wait()
+                uploading = bot.send_chat_action(chat_id, 'upload_document')
+                bot.send_document(chat_id, link).wait()
+                uploading.wait()
+
+            if doc['doc']['ext'] == 'doc' or doc['doc']['ext'] == 'docx' or doc['doc']['ext'] == 'rar' or \
+                            doc['doc']['ext'] == 'ogg':
+                data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<i>Документ</i>'
+                bot.send_message(chat_id, data, parse_mode='HTML',
+                                 disable_notification=check_notification(m)).wait()
+                uploading = bot.send_chat_action(chat_id, 'upload_document')
+                bot.send_document(chat_id, wget.download(requests.get(doc['doc']['url']).url)).wait()
+                uploading.wait()
+
+            else:
+                link = doc['doc']['url']
+                data = add_reply_info(m, user["first_name"], user["last_name"]) + \
+                       '<i>Документ</i>\n<a href="{}">{}</a>'.format(link, doc['doc']['title'])
+                bot.send_message(chat_id, data, parse_mode='HTML',
+                                 disable_notification=check_notification(m)).wait()
+
+    if m['attachment']['type'] == 'sticker':
+        link = m['attachment']['sticker']['photo_512']
+        data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<a href="{}">Стикер</a>'.format(link)
+        bot.send_message(chat_id, data, parse_mode='HTML',
+                         disable_notification=check_notification(m)).wait()
+        # TODO: Wall Posts and comments
+
+
+def add_reply_info(m, first_name, last_name):
+    if 'body' in m:
+        if 'chat_id' in m:
+            # TODO: Handle forwared messages
+            return '<a href="x{}.{}">&#8203;</a><b>{} {} @ {}:</b>\n{}\n'.format(m['uid'], m['chat_id'], first_name,
+                                                          last_name, m['title'], m['body'].replace('<br>', '\n'))
+        else:
+            return '<a href="x{}.0">&#8203;</a><b>{} {}:</b>\n{}\n'.format(m['uid'], first_name, last_name,
+                                                                           m['body'].replace('<br>', '\n'))
+    else:
+        if 'chat_id' in m:
+            return '<a href="x{}.{}">&#8203;</a><b>{} {} @ {}:</b>\n'.format(m['uid'], m['chat_id'], first_name,
+                                                                             last_name, m['title'])
+        else:
+            return '<a href="x{}.0">&#8203;</a><b>{} {}:</b>\n'.format(m['uid'], first_name, last_name)
+
+
+def check_notification(value):
+    if 'push_settings' in value:
+        return True
+    else:
+        return False
+
+
+def get_max_src(attachment):
+    if 'src_xxbig' in attachment:
+        return attachment['src_xxbig']
+    if 'src_xbig' in attachment:
+        return attachment['src_xbig']
+    if 'src_big' in attachment:
+        return attachment['src_big']
+    if 'src' in attachment:
+        return attachment['src']
 
 
 class VkMessage:
@@ -48,18 +167,7 @@ class VkMessage:
         else:
             messages = msgs[1:]
             for m in messages:
-                if not m['out'] and m['body']:
-                    if 'chat_id' in m:
-                        user = api.users.get(user_ids=m["uid"], fields=[])[0]
-                        data = '<a href="x{}.{}.{}">&#8203;</a><b>{} {} @ {}:</b>\n{}'.format(
-                            m["uid"], m['chat_id'], m['push_settings']['sound'], user["first_name"],
-                            user["last_name"], m['title'], m["body"].replace('<br>', '\n'))
-                        res.append(data)
-                    else:
-                        user = api.users.get(user_ids=m["uid"], fields=[])[0]
-                        data = '<a href="x{}.0">&#8203;</a><b>{} {}:</b>\n{}'.format(
-                            m["uid"], user["first_name"], user["last_name"], m["body"].replace('<br>', '\n'))
-                        res.append(data)
+                res.append(m)
         return res
 
 

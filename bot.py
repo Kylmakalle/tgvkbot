@@ -15,9 +15,10 @@ vk_threads = {}
 vk_tokens = {}
 
 bot = telebot.AsyncTeleBot(token)
+bot.remove_webhook()
 
 link = 'https://oauth.vk.com/authorize?client_id={}&' \
-       'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages' \
+       'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline' \
        '&response_type=token&v=5.65'.format(vk_app_id)
 
 mark = types.InlineKeyboardMarkup()
@@ -52,9 +53,7 @@ def stop_thread(message):
 def extract_unique_code(text):
     # Extracts the unique_code from the sent /start command.
     try:
-        text = text[45:]
-        text = text.split('&')
-        return text[0]
+        return text[45:].split('&')[0]
     except:
         return None
 
@@ -66,7 +65,7 @@ def verifycode(code):
 
 
 def info_extractor(info):
-    info = info[0].url[8:-3].split('.')
+    info = info[0].url[8:-1].split('.')
     return info
 
 
@@ -90,8 +89,36 @@ def start_command(message):
         bot.send_message(message.chat.id, 'Вход уже выполнен!\n/stop для выхода.').wait()
 
 
+"""def vk_sender(message, method):
+    if message.reply_to_message:
+        if str(message.from_user.id) in vk_tokens:
+            info = info_extractor(message.reply_to_message.entities)
+            if info is not None:
+                if len(info) - 1:
+                    method(message, info[0], False)
+                    vk.API(vk_tokens[str(message.from_user.id)].session).messages.send(chat_id=info[1],
+                                                                                       message=message.text)
+                else:
+                    method(message, info[0], True)
+                    vk.API(vk_tokens[str(message.from_user.id)].session).messages.send(user_id=info[0],
+                                                                                       message=message.text)
+        else:
+            bot.send_message(message.chat.id, 'Вход не выполнен! /start дл входа').wait()
+
+
+def send_audio(msg, info, private):
+    if private:
+        pass
+    else:
+        pass
+
+@bot.message_handler(content_types=['audio'])
+def reply_audio(message):
+    vk_sender(message, send_audio)"""
+
+
 @bot.message_handler(content_types=['text'])
-def reply(message):
+def reply_text(message):
     m = re.search('https://oauth\.vk\.com/blank\.html#access_token=[a-z0-9]*&expires_in=[0-9]*&user_id=[0-9]*',
                   message.text)
     if m:
@@ -107,9 +134,9 @@ def reply(message):
                                                   ' попробуешь? telegram.org/download', parse_mode='Markdown').wait()
                 bot.send_message(message.chat.id, 'Для сообщений из групповых чатов будет указываться'
                                                   ' чат после имени отправителя:').wait()
-                rp = bot.send_message(message.chat.id, '*Ник Невидов @ My English is perfect:*\n'
-                                                       'London is the capital of Great Britain',
-                                      parse_mode='Markdown').wait()
+                bot.send_message(message.chat.id, '*Ник Невидов @ My English is perfect:*\n'
+                                                  'London is the capital of Great Britain',
+                                 parse_mode='Markdown').wait()
                 bot.send_message(message.chat.id, 'Чтобы ответить, используй Reply на нужное сообщение.'
                                                   ' (нет, на эти не сработает, нужно реальное)',
                                  parse_mode='Markdown').wait()
@@ -120,16 +147,20 @@ def reply(message):
         return
 
     if message.reply_to_message:
-        info = info_extractor(message.reply_to_message.entities)
-        if info is not None:
-            if len(info) - 1:
-                vk.API(vk_tokens[str(message.from_user.id)].session).messages.send(chat_id=info[1],
-                                                                                   message=message.text)
-            else:
-                vk.API(vk_tokens[str(message.from_user.id)].session).messages.send(user_id=info[0],
-                                                                                   message=message.text)
+        if str(message.from_user.id) in vk_tokens:
+            info = info_extractor(message.reply_to_message.entities)
+            if info is not None:
+                if len(info) - 1:
+                    vk.API(vk_tokens[str(message.from_user.id)].session).messages.send(chat_id=info[1],
+                                                                                       message=message.text)
+                else:
+                    vk.API(vk_tokens[str(message.from_user.id)].session).messages.send(user_id=info[0],
+                                                                                       message=message.text)
+        else:
+            bot.send_message(message.chat.id, 'Вход не выполнен! /start дл входа').wait()
 
 
+#bot.polling()
 class WebhookServer(object):
     # index равнозначно /, т.к. отсутствию части после ip-адреса (грубо говоря)
     @cherrypy.expose
