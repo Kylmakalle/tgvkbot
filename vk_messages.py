@@ -2,6 +2,7 @@ import vk
 import time
 import requests
 import wget
+import os
 
 
 class VkPolling:
@@ -72,30 +73,42 @@ def attachment_handler(m, user, bot, chat_id):
                 bot.send_message(chat_id, data, parse_mode='HTML',
                                  disable_notification=check_notification(m)).wait()
 
-            if doc['doc']['ext'] == 'pdf' or doc['doc']['ext'] == 'zip':
+            elif doc['doc']['ext'] == 'pdf' or doc['doc']['ext'] == 'zip':
                 link = doc['doc']['url']
                 data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<a href="{}">Документ</a>'.format(
                     link)
                 bot.send_message(chat_id, data, parse_mode='HTML',
                                  disable_notification=check_notification(m)).wait()
 
-            if doc['doc']['ext'] == 'jpg' or doc['doc']['ext'] == 'png':
+            elif doc['doc']['ext'] == 'jpg' or doc['doc']['ext'] == 'png':
                 link = doc['doc']['url']
                 data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<i>Документ</i>'
-                bot.send_message(chat_id, data, parse_mode='HTML',
-                                 disable_notification=check_notification(m)).wait()
+                notification = bot.send_message(chat_id, data, parse_mode='HTML',
+                                                disable_notification=check_notification(m)).wait()
                 uploading = bot.send_chat_action(chat_id, 'upload_document')
-                bot.send_document(chat_id, link).wait()
+                bot.send_document(chat_id, link, reply_to_message_id=notification.message_id,
+                                  disable_notification=check_notification(m)).wait()
                 uploading.wait()
 
-            if doc['doc']['ext'] == 'doc' or doc['doc']['ext'] == 'docx' or doc['doc']['ext'] == 'rar' or \
-                            doc['doc']['ext'] == 'ogg':
-                data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<i>Документ</i>'
+            elif doc['doc']['ext'] == 'ogg':
+                link = doc['doc']['url']
+                data = add_reply_info(m, user["first_name"], user["last_name"], ) + \
+                       '<a href="{}">Аудио</a>'.format(link)
                 bot.send_message(chat_id, data, parse_mode='HTML',
                                  disable_notification=check_notification(m)).wait()
+
+            elif doc['doc']['ext'] == 'doc' or doc['doc']['ext'] == 'docx':
+                data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<i>Документ</i>'
+                notification = bot.send_message(chat_id, data, parse_mode='HTML',
+                                                disable_notification=check_notification(m)).wait()
                 uploading = bot.send_chat_action(chat_id, 'upload_document')
-                bot.send_document(chat_id, wget.download(requests.get(doc['doc']['url']).url)).wait()
+                file = wget.download(requests.get(doc['doc']['url']).url)
+                bot.send_document(chat_id, open(file, 'rb'),
+                                  reply_to_message_id=notification.message_id,
+                                  disable_notification=check_notification(m)).wait()
                 uploading.wait()
+                file.close()
+                os.remove(file)
 
             else:
                 link = doc['doc']['url']
@@ -117,7 +130,8 @@ def add_reply_info(m, first_name, last_name):
         if 'chat_id' in m:
             # TODO: Handle forwared messages
             return '<a href="x{}.{}">&#8203;</a><b>{} {} @ {}:</b>\n{}\n'.format(m['uid'], m['chat_id'], first_name,
-                                                          last_name, m['title'], m['body'].replace('<br>', '\n'))
+                                                                                 last_name, m['title'],
+                                                                                 m['body'].replace('<br>', '\n'))
         else:
             return '<a href="x{}.0">&#8203;</a><b>{} {}:</b>\n{}\n'.format(m['uid'], first_name, last_name,
                                                                            m['body'].replace('<br>', '\n'))
