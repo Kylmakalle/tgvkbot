@@ -30,7 +30,7 @@ class VkPolling:
 def handle_messages(m, vk_user, bot, chat_id):
     user = vk.API(vk_user.session).users.get(user_ids=m["uid"], fields=[])[0]
     if 'body' in m and not 'attachment' in m:
-        data = add_reply_info(m, user["first_name"], user["last_name"]) + '{}'.format(m["body"].replace('<br>', '\n'))
+        data = add_reply_info(m, user["first_name"], user["last_name"])
         bot.send_message(chat_id, data, parse_mode='HTML',
                          disable_notification=check_notification(m)).wait()
     if 'attachment' in m:
@@ -113,7 +113,7 @@ def attachment_handler(m, user, bot, chat_id):
 
 
 def add_reply_info(m, first_name, last_name):
-    if 'body' in m:
+    if m['body']:
         if 'chat_id' in m:
             # TODO: Handle forwared messages
             return '<a href="x{}.{}">&#8203;</a><b>{} {} @ {}:</b>\n{}\n'.format(m['uid'], m['chat_id'], first_name,
