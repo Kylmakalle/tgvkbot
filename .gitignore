@@ -140,3 +140,6 @@ $RECYCLE.BIN/
 
 # Bot credentials
 credentials.py
+
+# PyCharm project
+.idea
