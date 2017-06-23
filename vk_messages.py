@@ -20,6 +20,7 @@ class VkPolling:
             except Exception as e:
                 print('Error: {}'.format(e))
             if updates:
+                print(updates)
                 handle_updates(vk_user, bot, chat_id, updates)
             for i in range(45):
                 if self._running:
@@ -30,12 +31,20 @@ class VkPolling:
 
 def handle_messages(m, vk_user, bot, chat_id):
     user = vk.API(vk_user.session).users.get(user_ids=m["uid"], fields=[])[0]
-    if 'body' in m and not 'attachment' in m:
+    if 'body' in m and not 'attachment' in m and not 'geo' in m:
         data = add_reply_info(m, user["first_name"], user["last_name"])
         bot.send_message(chat_id, data, parse_mode='HTML',
                          disable_notification=check_notification(m)).wait()
     if 'attachment' in m:
         attachment_handler(m, user, bot, chat_id)
+    if 'geo' in m:
+        data = add_reply_info(m, user["first_name"], user["last_name"])
+        geo = bot.send_message(chat_id, data, parse_mode='HTML',
+                               disable_notification=check_notification(m)).wait()
+        bot.send_venue(chat_id, m['geo']['coordinates'].split(' ')[0], m['geo']['coordinates'].split(' ')[1],
+                       m['geo']['place']['title'], m['geo']['place']['city'],
+                       disable_notification=check_notification(m),
+                       reply_to_message_id=geo.message_id).wait()
 
 
 def handle_updates(vk_user, bot, chat_id, updates):
@@ -68,54 +77,67 @@ def attachment_handler(m, user, bot, chat_id):
     if m['attachment']['type'] == 'doc':
         for doc in m['attachments']:
             if doc['doc']['ext'] == 'gif':
-                link = doc['doc']['url']
-                data = add_reply_info(m, user["first_name"], user["last_name"]) + '<a href="{}">GIF</a>'.format(link)
-                bot.send_message(chat_id, data, parse_mode='HTML',
-                                 disable_notification=check_notification(m)).wait()
+                try:
+                    link = doc['doc']['url']
+                    data = add_reply_info(m, user["first_name"], user["last_name"]) + '<a href="{}">GIF</a>'.format(
+                        link)
+                    bot.send_message(chat_id, data, parse_mode='HTML',
+                                     disable_notification=check_notification(m)).wait()
+                except:
+                    send_doc_link(doc, m, user, bot, chat_id)
 
             elif doc['doc']['ext'] == 'pdf' or doc['doc']['ext'] == 'zip':
-                link = doc['doc']['url']
-                data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<a href="{}">Документ</a>'.format(
-                    link)
-                bot.send_message(chat_id, data, parse_mode='HTML',
-                                 disable_notification=check_notification(m)).wait()
+                try:
+                    link = doc['doc']['url']
+                    data = add_reply_info(m, user["first_name"],
+                                          user["last_name"], ) + '<a href="{}">Документ</a>'.format(
+                        link)
+                    bot.send_message(chat_id, data, parse_mode='HTML',
+                                     disable_notification=check_notification(m)).wait()
+                except:
+                    send_doc_link(doc, m, user, bot, chat_id)
 
             elif doc['doc']['ext'] == 'jpg' or doc['doc']['ext'] == 'png':
-                link = doc['doc']['url']
-                data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<i>Документ</i>'
-                notification = bot.send_message(chat_id, data, parse_mode='HTML',
-                                                disable_notification=check_notification(m)).wait()
-                uploading = bot.send_chat_action(chat_id, 'upload_document')
-                bot.send_document(chat_id, link, reply_to_message_id=notification.message_id,
-                                  disable_notification=check_notification(m)).wait()
-                uploading.wait()
+                try:
+                    link = doc['doc']['url']
+                    data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<i>Документ</i>'
+                    notification = bot.send_message(chat_id, data, parse_mode='HTML',
+                                                    disable_notification=check_notification(m)).wait()
+                    uploading = bot.send_chat_action(chat_id, 'upload_document')
+                    bot.send_document(chat_id, link, reply_to_message_id=notification.message_id,
+                                      disable_notification=check_notification(m)).wait()
+                    uploading.wait()
+                except:
+                    send_doc_link(doc, m, user, bot, chat_id)
 
             elif doc['doc']['ext'] == 'ogg':
-                link = doc['doc']['url']
-                data = add_reply_info(m, user["first_name"], user["last_name"], ) + \
-                       '<a href="{}">Аудио</a>'.format(link)
-                bot.send_message(chat_id, data, parse_mode='HTML',
-                                 disable_notification=check_notification(m)).wait()
+                try:
+                    link = doc['doc']['url']
+                    data = add_reply_info(m, user["first_name"], user["last_name"], ) + \
+                           '<a href="{}">Аудио</a>'.format(link)
+                    bot.send_message(chat_id, data, parse_mode='HTML',
+                                     disable_notification=check_notification(m)).wait()
+                except:
+                    send_doc_link(doc, m, user, bot, chat_id)
 
             elif doc['doc']['ext'] == 'doc' or doc['doc']['ext'] == 'docx':
-                data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<i>Документ</i>'
-                notification = bot.send_message(chat_id, data, parse_mode='HTML',
-                                                disable_notification=check_notification(m)).wait()
-                uploading = bot.send_chat_action(chat_id, 'upload_document')
-                file = wget.download(requests.get(doc['doc']['url']).url)
-                bot.send_document(chat_id, open(file, 'rb'),
-                                  reply_to_message_id=notification.message_id,
-                                  disable_notification=check_notification(m)).wait()
-                uploading.wait()
-                file.close()
-                os.remove(file)
+                try:
+                    data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<i>Документ</i>'
+                    notification = bot.send_message(chat_id, data, parse_mode='HTML',
+                                                    disable_notification=check_notification(m)).wait()
+                    uploading = bot.send_chat_action(chat_id, 'upload_document')
+                    file = wget.download(requests.get(doc['doc']['url']).url)
+                    bot.send_document(chat_id, open(file, 'rb'),
+                                      reply_to_message_id=notification.message_id,
+                                      disable_notification=check_notification(m)).wait()
+                    uploading.wait()
+                    file.close()
+                    os.remove(file)
+                except:
+                    send_doc_link(doc, m, user, bot, chat_id)
 
             else:
-                link = doc['doc']['url']
-                data = add_reply_info(m, user["first_name"], user["last_name"]) + \
-                       '<i>Документ</i>\n<a href="{}">{}</a>'.format(link, doc['doc']['title'])
-                bot.send_message(chat_id, data, parse_mode='HTML',
-                                 disable_notification=check_notification(m)).wait()
+                send_doc_link(doc, m, user, bot, chat_id)
 
     if m['attachment']['type'] == 'sticker':
         link = m['attachment']['sticker']['photo_512']
@@ -123,6 +145,15 @@ def attachment_handler(m, user, bot, chat_id):
         bot.send_message(chat_id, data, parse_mode='HTML',
                          disable_notification=check_notification(m)).wait()
         # TODO: Wall Posts and comments
+
+
+def send_doc_link(doc, m, user, bot, chat_id):
+    link = doc['doc']['url']
+    data = add_reply_info(m, user["first_name"], user["last_name"]) + \
+           '<i>Документ</i>\n<a href="{}">{}</a>'.format(link,
+                                                         doc['doc']['title'] + '.' + doc['doc']['ext'])
+    bot.send_message(chat_id, data, parse_mode='HTML',
+                     disable_notification=check_notification(m)).wait()
 
 
 def add_reply_info(m, first_name, last_name):

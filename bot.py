@@ -9,6 +9,7 @@ import requests
 import ujson
 import wget
 import os
+from PIL import Image
 import cherrypy
 import redis
 
@@ -27,7 +28,7 @@ bot = telebot.AsyncTeleBot(token)
 bot.remove_webhook()
 
 link = 'https://oauth.vk.com/authorize?client_id={}&' \
-       'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs' \
+       'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video' \
        '&response_type=token&v=5.65'.format(vk_app_id)
 mark = types.InlineKeyboardMarkup()
 yes = types.InlineKeyboardButton('ВХОД', url=link)
@@ -117,41 +118,229 @@ def vk_sender(message, method):
             bot.send_message(message.chat.id, 'Вход не выполнен! /start для входа').wait()
 
 
+def audio_title_creator(message, performer=None, title=None):
+    if not performer and not title:
+        return 'Аудио_{}'.format(str(message.date)[5:])
+    else:
+        return '{} - {}'.format(performer, title)
+
+
+def send_text(message, userid, group):
+    session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+    if group:
+        vk.API(session).messages.send(chat_id=userid, message=message.text)
+    else:
+        vk.API(session).messages.send(user_id=userid, message=message.text)
+
+
 def send_doc(message, userid, group):
+    filetype = message.content_type
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
     file = wget.download(
-        FILE_URL.format(token, bot.get_file(message.document.file_id).wait().file_path))
+        FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
+    if filetype == 'document':
+        openedfile = open(file, 'rb')
+        files = {'file': openedfile}
+        fileonserver = ujson.loads(requests.post(vk.API(session).docs.getUploadServer()['upload_url'],
+                                                 files=files).text)
+        attachment = vk.API(session).docs.save(file=fileonserver['file'],
+                                               title=getattr(message, filetype).file_name,
+                                               tags='')
+        openedfile.close()
+        os.remove(file)
+
+    if filetype == 'voice':
+        openedfile = open(file, 'rb')
+        files = {'file': openedfile}
+        fileonserver = ujson.loads(requests.post(vk.API(session).docs.getUploadServer()['upload_url'],
+                                                 files=files).text)
+        attachment = vk.API(session).docs.save(file=fileonserver['file'], title='Аудиосообщение',
+                                               tags='')
+        openedfile.close()
+        os.remove(file)
+
+    if filetype == 'audio':
+        newfile = file.split('.')[0] + '.aac'
+        os.rename(file, newfile)
+        openedfile = open(newfile, 'rb')
+        files = {'file': openedfile}
+        fileonserver = ujson.loads(requests.post(vk.API(session).docs.getUploadServer()['upload_url'],
+                                                 files=files).text)
+        attachment = vk.API(session).docs.save(file=fileonserver['file'],
+                                               title=audio_title_creator(message, message.audio.performer,
+                                                                         message.audio.title), tags='')
+        openedfile.close()
+        os.remove(newfile)
+
+    if group:
+        if message.caption:
+
+            vk.API(session).messages.send(chat_id=userid, message=message.caption,
+                                          attachment='doc{}_{}'.format(attachment[0]['owner_id'],
+                                                                       attachment[0]['did']))
+        else:
+            vk.API(session).messages.send(chat_id=userid,
+                                          attachment='doc{}_{}'.format(attachment[0]['owner_id'],
+                                                                       attachment[0]['did']))
+    else:
+        if message.caption:
+            vk.API(session).messages.send(user_id=userid, message=message.caption,
+                                          attachment='doc{}_{}'.format(attachment[0]['owner_id'],
+                                                                       attachment[0]['did']))
+        else:
+            vk.API(session).messages.send(user_id=userid,
+                                          attachment='doc{}_{}'.format(attachment[0]['owner_id'],
+                                                                       attachment[0]['did']))
+
+
+def send_photo(message, userid, group):
+    filetype = message.content_type
+    session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+    file = wget.download(
+        FILE_URL.format(token, bot.get_file(getattr(message, filetype)[-1].file_id).wait().file_path))
     openedfile = open(file, 'rb')
     files = {'file': openedfile}
-    fileonserver = ujson.loads(requests.post(vk.API(session).docs.getUploadServer()['upload_url'],
+    fileonserver = ujson.loads(requests.post(vk.API(session).photos.getMessagesUploadServer()['upload_url'],
                                              files=files).text)
-    attachment = vk.API(session).docs.save(file=fileonserver['file'], title=message.document.file_name,
-                                           tags='')
+    attachment = vk.API(session).photos.saveMessagesPhoto(server=fileonserver['server'], photo=fileonserver['photo'],
+                                                          hash=fileonserver['hash'])
     if group:
-        vk.API(session).messages.send(chat_id=userid,
-                                      attachment='doc{}_{}'.format(attachment[0]['owner_id'],
-                                                                   attachment[0]['did']))
+        if message.caption:
+            vk.API(session).messages.send(chat_id=userid, message=message.caption, attachment=attachment[0]['id'])
+        else:
+            vk.API(session).messages.send(chat_id=userid, attachment=attachment[0]['id'])
     else:
-        vk.API(session).messages.send(user_id=userid,
-                                      attachment='doc{}_{}'.format(attachment[0]['owner_id'],
-                                                                   attachment[0]['did']))
+        if message.caption:
+            vk.API(session).messages.send(user_id=userid, message=message.caption, attachment=attachment[0]['id'])
+        else:
+            vk.API(session).messages.send(user_id=userid, attachment=attachment[0]['id'])
     openedfile.close()
     os.remove(file)
 
 
-@bot.message_handler(content_types=['document'])
-def reply_document(message):
-    vk_sender(message, send_doc)
-    """if message.reply_to_message:
-        if vk_tokens.get(str(message.from_user.id)):
-            info = info_extractor(message.reply_to_message.entities)
-            if info is not None:
-                if int(info[1]):
-                    send_doc(message, info[1], True)
-                else:
-                    send_doc(message, info[0], False)
+def send_sticker(message, userid, group):
+    filetype = message.content_type
+    session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+    file = wget.download(
+        FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
+    Image.open(file).save("{}.png".format(file))
+    openedfile = open('{}.png'.format(file), 'rb')
+    files = {'file': openedfile}
+    fileonserver = ujson.loads(requests.post(vk.API(session).photos.getMessagesUploadServer()['upload_url'],
+                                             files=files).text)
+    attachment = vk.API(session).photos.saveMessagesPhoto(server=fileonserver['server'], photo=fileonserver['photo'],
+                                                          hash=fileonserver['hash'])
+    if group:
+        if message.caption:
+            vk.API(session).messages.send(chat_id=userid, message=message.caption, attachment=attachment[0]['id'])
         else:
-            bot.send_message(message.chat.id, 'Вход не выполнен! /start для входа').wait()"""
+            vk.API(session).messages.send(chat_id=userid, attachment=attachment[0]['id'])
+    else:
+        if message.caption:
+            vk.API(session).messages.send(user_id=userid, message=message.caption, attachment=attachment[0]['id'])
+        else:
+            vk.API(session).messages.send(user_id=userid, attachment=attachment[0]['id'])
+    openedfile.close()
+    os.remove('{}.png'.format(file))
+    os.remove(file)
+
+
+def send_video(message, userid, group):
+    filetype = message.content_type
+    session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+
+    file = wget.download(
+        FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
+    openedfile = open(file, 'rb')
+    files = {'video_file': openedfile}
+
+    if group:
+        attachment = vk.API(session).video.save(privacy_view='all')
+        fileonserver = ujson.loads(requests.post(attachment['upload_url'],
+                                                 files=files).text)
+        video = 'video{}_{}'.format(attachment['owner_id'], attachment['owner_id']['video_id'])
+        if message.caption:
+            vk.API(session).messages.send(chat_id=userid, message=message.caption, attachment=video)
+        else:
+            vk.API(session).messages.send(chat_id=userid, attachment=video)
+    else:
+        try:
+            attachment = vk.API(session).video.save(privacy_view=userid)
+        except:
+            attachment = vk.API(session).video.save(privacy_view='all')
+        fileonserver = ujson.loads(requests.post(attachment['upload_url'],
+                                                 files=files).text)
+        video = 'video{}_{}'.format(attachment['owner_id'], attachment['vid'])
+        if message.caption:
+            vk.API(session).messages.send(user_id=userid, message=message.caption, attachment=video)
+        else:
+            vk.API(session).messages.send(user_id=userid, attachment=video)
+    openedfile.close()
+    os.remove(file)
+
+
+def send_contact(message, userid, group):
+    session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+    if message.contact.last_name:
+        text = 'Контакт: {} {}'.format(message.contact.first_name, message.contact.last_name)
+    else:
+        text = 'Контакт: {}'.format(message.contact.first_name)
+    if group:
+        vk.API(session).messages.send(chat_id=userid, message=text)
+        vk.API(session).messages.send(chat_id=userid, message=message.contact)
+    else:
+        vk.API(session).messages.send(user_id=userid, message=text)
+        vk.API(session).messages.send(chat_id=userid, message=message.contact)
+
+
+@bot.message_handler(content_types=['document', 'voice', 'audio'])
+def reply_document(message):
+    if message.reply_to_message:
+        try:
+            vk_sender(message, send_doc)
+        except Exception as e:
+            bot.reply_to(message, 'Файл слишком большой, максимально допустимый размер *20мб*!',
+                         parse_mode='Markdown').wait()
+            print('Error: {}'.format(e))
+
+
+@bot.message_handler(content_types=['sticker'])
+def reply_sticker(message):
+    if message.reply_to_message:
+        try:
+            vk_sender(message, send_sticker)
+        except Exception as e:
+            bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
+                         parse_mode='Markdown').wait()
+            print('Error: {}'.format(e))
+
+
+@bot.message_handler(content_types=['photo'])
+def reply_photo(message):
+    if message.reply_to_message:
+        try:
+            vk_sender(message, send_photo)
+        except Exception as e:
+            bot.send_message(message.chat.id, 'Фото слишком большое, максимально допустимый размер *20мб*!',
+                             parse_mode='Markdown').wait()
+            print('Error: {}'.format(e))
+
+
+@bot.message_handler(content_types=['video', 'video_note'])
+def reply_video(message):
+    if message.reply_to_message:
+        try:
+            vk_sender(message, send_video)
+        except Exception as e:
+            bot.reply_to(message, 'Файл слишком большой, максимально допустимый размер *20мб*!',
+                         parse_mode='Markdown').wait()
+            print('Error: {}'.format(e))
+
+
+@bot.message_handler(content_types=['contact'])
+def reply_contact(message):
+    if message.reply_to_message:
+        vk_sender(message, send_contact)
 
 
 @bot.message_handler(content_types=['text'])
@@ -184,19 +373,12 @@ def reply_text(message):
         return
 
     if message.reply_to_message:
-        if vk_tokens.get(str(message.from_user.id)):
-            info = info_extractor(message.reply_to_message.entities)
-            if info is not None:
-                if int(info[1]):
-                    vk.API(VkMessage(vk_tokens.get(str(message.from_user.id))).session).messages.send(
-                        chat_id=info[1],
-                        message=message.text)
-                else:
-                    vk.API(VkMessage(vk_tokens.get(str(message.from_user.id))).session).messages.send(
-                        user_id=info[0],
-                        message=message.text)
-        else:
-            bot.send_message(message.chat.id, 'Вход не выполнен! /start для входа').wait()
+        try:
+            vk_sender(message, send_text)
+        except Exception as e:
+            bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
+                         parse_mode='Markdown').wait()
+            print('Error: {}'.format(e))
 
 
 # bot.polling()
