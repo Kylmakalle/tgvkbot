@@ -96,6 +96,7 @@ def stop_command(message):
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
+    # TODO: Dialogs Menu
     if check_thread(message.from_user.id):
         bot.send_message(message.chat.id,
                          'Привет, этот бот поможет тебе общаться ВКонтакте, войди по кнопке ниже'
@@ -105,15 +106,35 @@ def start_command(message):
         bot.send_message(message.chat.id, 'Вход уже выполнен!\n/stop для выхода.').wait()
 
 
+def form_request(message, method, info):
+    if int(info[2]):
+        if message.text.startswith('!'):
+            if len(message.text) - 1:
+                message.text = message.text[1:]
+            if info[1] != 'None':
+                method(message, info[1], group=True, forward_messages=info[1])
+            else:
+                method(message, info[1], group=True)
+        else:
+            method(message, info[1], group=True)
+    else:
+        if message.text.startswith('!'):
+            if len(message.text) - 1:
+                message.text = message.text[1:]
+            if info[1] != 'None':
+                method(message, info[0], group=False, forward_messages=info[1])
+            else:
+                method(message, info[1], group=True)
+        else:
+            method(message, info[0], group=False)
+
+
 def vk_sender(message, method):
     if message.reply_to_message:
         if vk_tokens.get(str(message.from_user.id)):
             info = info_extractor(message.reply_to_message.entities)
             if info is not None:
-                if int(info[1]):
-                    method(message, info[1], group=True)
-                else:
-                    method(message, info[0], group=False)
+                form_request(message, method, info)
         else:
             bot.send_message(message.chat.id, 'Вход не выполнен! /start для входа').wait()
 
@@ -125,15 +146,15 @@ def audio_title_creator(message, performer=None, title=None):
         return '{} - {}'.format(performer, title)
 
 
-def send_text(message, userid, group):
+def send_text(message, userid, group, forward_messages=None):
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
     if group:
-        vk.API(session).messages.send(chat_id=userid, message=message.text)
+        vk.API(session).messages.send(chat_id=userid, message=message.text, forward_messages=forward_messages)
     else:
-        vk.API(session).messages.send(user_id=userid, message=message.text)
+        vk.API(session).messages.send(user_id=userid, message=message.text, forward_messages=forward_messages)
 
 
-def send_doc(message, userid, group):
+def send_doc(message, userid, group, forward_messages=None):
     filetype = message.content_type
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
     file = wget.download(
@@ -177,23 +198,27 @@ def send_doc(message, userid, group):
 
             vk.API(session).messages.send(chat_id=userid, message=message.caption,
                                           attachment='doc{}_{}'.format(attachment[0]['owner_id'],
-                                                                       attachment[0]['did']))
+                                                                       attachment[0]['did']),
+                                          forward_messages=forward_messages)
         else:
             vk.API(session).messages.send(chat_id=userid,
                                           attachment='doc{}_{}'.format(attachment[0]['owner_id'],
-                                                                       attachment[0]['did']))
+                                                                       attachment[0]['did']),
+                                          forward_messages=forward_messages)
     else:
         if message.caption:
             vk.API(session).messages.send(user_id=userid, message=message.caption,
                                           attachment='doc{}_{}'.format(attachment[0]['owner_id'],
-                                                                       attachment[0]['did']))
+                                                                       attachment[0]['did']),
+                                          forward_messages=forward_messages)
         else:
             vk.API(session).messages.send(user_id=userid,
                                           attachment='doc{}_{}'.format(attachment[0]['owner_id'],
-                                                                       attachment[0]['did']))
+                                                                       attachment[0]['did']),
+                                          forward_messages=forward_messages)
 
 
-def send_photo(message, userid, group):
+def send_photo(message, userid, group, forward_messages=None):
     filetype = message.content_type
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
     file = wget.download(
@@ -206,19 +231,23 @@ def send_photo(message, userid, group):
                                                           hash=fileonserver['hash'])
     if group:
         if message.caption:
-            vk.API(session).messages.send(chat_id=userid, message=message.caption, attachment=attachment[0]['id'])
+            vk.API(session).messages.send(chat_id=userid, message=message.caption, attachment=attachment[0]['id'],
+                                          forward_messages=forward_messages)
         else:
-            vk.API(session).messages.send(chat_id=userid, attachment=attachment[0]['id'])
+            vk.API(session).messages.send(chat_id=userid, attachment=attachment[0]['id'],
+                                          forward_messages=forward_messages)
     else:
         if message.caption:
-            vk.API(session).messages.send(user_id=userid, message=message.caption, attachment=attachment[0]['id'])
+            vk.API(session).messages.send(user_id=userid, message=message.caption, attachment=attachment[0]['id'],
+                                          forward_messages=forward_messages)
         else:
-            vk.API(session).messages.send(user_id=userid, attachment=attachment[0]['id'])
+            vk.API(session).messages.send(user_id=userid, attachment=attachment[0]['id'],
+                                          forward_messages=forward_messages)
     openedfile.close()
     os.remove(file)
 
 
-def send_sticker(message, userid, group):
+def send_sticker(message, userid, group, forward_messages=None):
     filetype = message.content_type
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
     file = wget.download(
@@ -232,20 +261,24 @@ def send_sticker(message, userid, group):
                                                           hash=fileonserver['hash'])
     if group:
         if message.caption:
-            vk.API(session).messages.send(chat_id=userid, message=message.caption, attachment=attachment[0]['id'])
+            vk.API(session).messages.send(chat_id=userid, message=message.caption, attachment=attachment[0]['id'],
+                                          forward_messages=forward_messages)
         else:
-            vk.API(session).messages.send(chat_id=userid, attachment=attachment[0]['id'])
+            vk.API(session).messages.send(chat_id=userid, attachment=attachment[0]['id'],
+                                          forward_messages=forward_messages)
     else:
         if message.caption:
-            vk.API(session).messages.send(user_id=userid, message=message.caption, attachment=attachment[0]['id'])
+            vk.API(session).messages.send(user_id=userid, message=message.caption, attachment=attachment[0]['id'],
+                                          forward_messages=forward_messages)
         else:
-            vk.API(session).messages.send(user_id=userid, attachment=attachment[0]['id'])
+            vk.API(session).messages.send(user_id=userid, attachment=attachment[0]['id'],
+                                          forward_messages=forward_messages)
     openedfile.close()
     os.remove('{}.png'.format(file))
     os.remove(file)
 
 
-def send_video(message, userid, group):
+def send_video(message, userid, group, forward_messages=None):
     filetype = message.content_type
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
 
@@ -260,34 +293,36 @@ def send_video(message, userid, group):
                                                  files=files).text)
         video = 'video{}_{}'.format(attachment['owner_id'], attachment['owner_id']['video_id'])
         if message.caption:
-            vk.API(session).messages.send(chat_id=userid, message=message.caption, attachment=video)
+            vk.API(session).messages.send(chat_id=userid, message=message.caption, attachment=video,
+                                          forward_messages=forward_messages)
         else:
-            vk.API(session).messages.send(chat_id=userid, attachment=video)
+            vk.API(session).messages.send(chat_id=userid, attachment=video, forward_messages=forward_messages)
     else:
         attachment = vk.API(session).video.save(is_private=1)
         fileonserver = ujson.loads(requests.post(attachment['upload_url'],
                                                  files=files).text)
         video = 'video{}_{}'.format(attachment['owner_id'], attachment['vid'])
         if message.caption:
-            vk.API(session).messages.send(user_id=userid, message=message.caption, attachment=video)
+            vk.API(session).messages.send(user_id=userid, message=message.caption, attachment=video,
+                                          forward_messages=forward_messages)
         else:
-            vk.API(session).messages.send(user_id=userid, attachment=video)
+            vk.API(session).messages.send(user_id=userid, attachment=video, forward_messages=forward_messages)
     openedfile.close()
     os.remove(file)
 
 
-def send_contact(message, userid, group):
+def send_contact(message, userid, group, forward_messages=None):
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
     if message.contact.last_name:
         text = 'Контакт: {} {}'.format(message.contact.first_name, message.contact.last_name)
     else:
         text = 'Контакт: {}'.format(message.contact.first_name)
     if group:
-        vk.API(session).messages.send(chat_id=userid, message=text)
-        vk.API(session).messages.send(chat_id=userid, message=message.contact)
+        vk.API(session).messages.send(chat_id=userid, message=text, forward_messages=forward_messages)
+        vk.API(session).messages.send(chat_id=userid, message=message.contact, forward_messages=forward_messages)
     else:
-        vk.API(session).messages.send(user_id=userid, message=text)
-        vk.API(session).messages.send(chat_id=userid, message=message.contact)
+        vk.API(session).messages.send(user_id=userid, message=text, forward_messages=forward_messages)
+        vk.API(session).messages.send(chat_id=userid, message=message.contact, forward_messages=forward_messages)
 
 
 @bot.message_handler(content_types=['document', 'voice', 'audio'])
