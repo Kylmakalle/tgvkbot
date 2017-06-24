@@ -255,7 +255,7 @@ def send_video(message, userid, group):
     files = {'video_file': openedfile}
 
     if group:
-        attachment = vk.API(session).video.save(privacy_view='all')
+        attachment = vk.API(session).video.save(is_private=1)
         fileonserver = ujson.loads(requests.post(attachment['upload_url'],
                                                  files=files).text)
         video = 'video{}_{}'.format(attachment['owner_id'], attachment['owner_id']['video_id'])
@@ -264,10 +264,7 @@ def send_video(message, userid, group):
         else:
             vk.API(session).messages.send(chat_id=userid, attachment=video)
     else:
-        try:
-            attachment = vk.API(session).video.save(privacy_view=userid)
-        except:
-            attachment = vk.API(session).video.save(privacy_view='all')
+        attachment = vk.API(session).video.save(is_private=1)
         fileonserver = ujson.loads(requests.post(attachment['upload_url'],
                                                  files=files).text)
         video = 'video{}_{}'.format(attachment['owner_id'], attachment['vid'])
