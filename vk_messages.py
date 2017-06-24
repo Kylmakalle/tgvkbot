@@ -20,7 +20,6 @@ class VkPolling:
             except Exception as e:
                 print('Error: {}'.format(e))
             if updates:
-                print(updates)
                 handle_updates(vk_user, bot, chat_id, updates)
             for i in range(45):
                 if self._running:
