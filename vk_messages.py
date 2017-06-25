@@ -33,13 +33,13 @@ def handle_messages(m, vk_user, bot, chat_id, mainmessage=None):
     user = vk.API(vk_user.session).users.get(user_ids=m["uid"], fields=[])[0]
     if 'body' in m and not 'attachment' in m and not 'geo' in m and not 'fwd_messages' in m:
         data = add_reply_info(m, user["first_name"], user["last_name"])
-        bot.send_message(chat_id, data, parse_mode='HTML',
+        bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                          disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
     if 'attachment' in m:
         attachment_handler(m, user, bot, chat_id, mainmessage)
     if 'geo' in m:
         data = add_reply_info(m, user["first_name"], user["last_name"])
-        geo = bot.send_message(chat_id, data, parse_mode='HTML',
+        geo = bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                                disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
         bot.send_venue(chat_id, m['geo']['coordinates'].split(' ')[0], m['geo']['coordinates'].split(' ')[1],
                        m['geo']['place']['title'], m['geo']['place']['city'],
@@ -47,7 +47,7 @@ def handle_messages(m, vk_user, bot, chat_id, mainmessage=None):
                        reply_to_message_id=geo.message_id).wait()
     if 'fwd_messages' in m:
         data = add_reply_info(m, user["first_name"], user["last_name"]) + '<i>Пересланные сообщения</i>'
-        reply = bot.send_message(chat_id, data, parse_mode='HTML',
+        reply = bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                                  disable_notification=check_notification(m),
                                  reply_to_message_id=mainmessage).wait().message_id
         for forwared in m['fwd_messages']:
@@ -65,21 +65,21 @@ def attachment_handler(m, user, bot, chat_id, mainmessage=None):
         for photo in m['attachments']:
             data = add_reply_info(m, user['first_name'], user['last_name']) + '<a href="{}">Фото</a>'.format(
                 get_max_src(photo['photo']))
-            bot.send_message(chat_id, data, parse_mode='HTML',
+            bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                              disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
     if m['attachment']['type'] == 'video':
         for vid in m['attachments']:
             link = 'https://vk.com/video{}_{}'.format(vid['video']['owner_id'],
                                                       vid['video']['vid'])
             data = add_reply_info(m, user['first_name'], user['last_name']) + '<a href="{}">Видео</a>'.format(link)
-            bot.send_message(chat_id, data, parse_mode='HTML',
+            bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                              disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
     if m['attachment']['type'] == 'audio':
         for audio in m['attachments']:
             data = add_reply_info(m, user['first_name'], user['last_name']) + '🎵 <code>{} - {}</code>'.format(
                 audio['audio']['artist'],
                 audio['audio']['title'])
-            bot.send_message(chat_id, data, parse_mode='HTML',
+            bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                              disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
     if m['attachment']['type'] == 'doc':
         for doc in m['attachments']:
@@ -88,7 +88,7 @@ def attachment_handler(m, user, bot, chat_id, mainmessage=None):
                     link = doc['doc']['url']
                     data = add_reply_info(m, user["first_name"], user["last_name"]) + '<a href="{}">GIF</a>'.format(
                         link)
-                    bot.send_message(chat_id, data, parse_mode='HTML',
+                    bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                                      disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
                 except:
                     send_doc_link(doc, m, user, bot, chat_id, mainmessage)
@@ -99,7 +99,7 @@ def attachment_handler(m, user, bot, chat_id, mainmessage=None):
                     data = add_reply_info(m, user["first_name"],
                                           user["last_name"], ) + '<a href="{}">Документ</a>'.format(
                         link)
-                    bot.send_message(chat_id, data, parse_mode='HTML',
+                    bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                                      disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
                 except:
                     send_doc_link(doc, m, user, bot, chat_id, mainmessage)
@@ -123,7 +123,7 @@ def attachment_handler(m, user, bot, chat_id, mainmessage=None):
                     link = doc['doc']['url']
                     data = add_reply_info(m, user["first_name"], user["last_name"], ) + \
                            '<a href="{}">Аудио</a>'.format(link)
-                    bot.send_message(chat_id, data, parse_mode='HTML',
+                    bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                                      disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
                 except:
                     send_doc_link(doc, m, user, bot, chat_id, mainmessage)
@@ -151,7 +151,7 @@ def attachment_handler(m, user, bot, chat_id, mainmessage=None):
     if m['attachment']['type'] == 'sticker':
         link = m['attachment']['sticker']['photo_512']
         data = add_reply_info(m, user["first_name"], user["last_name"], ) + '<a href="{}">Стикер</a>'.format(link)
-        bot.send_message(chat_id, data, parse_mode='HTML',
+        bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                          disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
         # TODO: Wall Posts and comments
 
@@ -161,7 +161,7 @@ def send_doc_link(doc, m, user, bot, chat_id, mainmessage=None):
     data = add_reply_info(m, user["first_name"], user["last_name"]) + \
            '<i>Документ</i>\n<a href="{}">{}</a>'.format(link,
                                                          doc['doc']['title'] + '.' + doc['doc']['ext'])
-    bot.send_message(chat_id, data, parse_mode='HTML',
+    bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                      disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
 
 
