@@ -81,7 +81,7 @@ def verifycode(code):
 
 
 def info_extractor(info):
-    info = info[0].url[8:-1].split('.')
+    info = info[-1].url[8:-1].split('.')
     return info
 
 
