@@ -108,19 +108,31 @@ def start_command(message):
 
 def form_request(message, method, info):
     if int(info[2]):
-        if message.text.startswith('!'):
+        if message.text and message.text.startswith('!'):
             if len(message.text) - 1:
                 message.text = message.text[1:]
             if info[1] != 'None':
                 method(message, info[1], group=True, forward_messages=info[1])
             else:
                 method(message, info[1], group=True)
+        elif message.caption and message.caption.startswith('!'):
+            if len(message.caption) - 1:
+                message.caption = message.caption[1:]
+            if info[1] != 'None':
+                method(message, info[1], group=True, forward_messages=info[1])
         else:
             method(message, info[1], group=True)
     else:
-        if message.text.startswith('!'):
+        if message.text and message.text.startswith('!'):
             if len(message.text) - 1:
                 message.text = message.text[1:]
+            if info[1] != 'None':
+                method(message, info[0], group=False, forward_messages=info[1])
+            else:
+                method(message, info[1], group=True)
+        elif message.caption and message.caption.startswith('!'):
+            if len(message.caption) - 1:
+                message.caption = message.caption[1:]
             if info[1] != 'None':
                 method(message, info[0], group=False, forward_messages=info[1])
             else:
