@@ -45,7 +45,7 @@ def handle_messages(m, vk_user, bot, chat_id, mainmessage=None):
         data = add_user_info(m, user["first_name"], user["last_name"]) + '<i>Местоположение</i>' + add_reply_info(m)
         geo = bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
                                disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
-        if 'place' in m['geo']:
+        if 'place' in m['geo'] and 'city' in m['geo']['place'] and 'title' in m[geo]['place']:
             bot.send_venue(chat_id, m['geo']['coordinates'].split(' ')[0], m['geo']['coordinates'].split(' ')[1],
                            m['geo']['place']['title'], m['geo']['place']['city'],
                            disable_notification=check_notification(m),
