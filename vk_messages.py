@@ -237,7 +237,7 @@ def add_reply_info(m):
     if 'chat_id' in m:
         return '<a href="x{}.{}.{}">&#8203;</a>'.format(m['uid'], m['chat_id'], check_forward_id(m))
     else:
-        return '<a href="x{}.{}.0">&#8203;</a>'.format(m['uid'], check_forward_id(m))
+        return '<a href="x{}.{}.00">&#8203;</a>'.format(m['uid'], check_forward_id(m))
 
 
 def add_user_info(m, first_name, last_name):

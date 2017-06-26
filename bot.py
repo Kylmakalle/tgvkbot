@@ -1,19 +1,20 @@
-import telebot
-from telebot import types
-from vk_messages import VkMessage, VkPolling
-import vk
-import threading
-import re
 import logging
-import requests
-import ujson
-import wget
 import os
-from PIL import Image
+import re
+import threading
+import ujson
+
 import cherrypy
 import redis
+import requests
+import telebot
+import vk
+import wget
+from PIL import Image
+from telebot import types
 
 from credentials import token, vk_app_id, local_port
+from vk_messages import VkMessage, VkPolling
 
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
 
@@ -33,6 +34,75 @@ link = 'https://oauth.vk.com/authorize?client_id={}&' \
 mark = types.InlineKeyboardMarkup()
 yes = types.InlineKeyboardButton('ВХОД', url=link)
 mark.add(yes)
+
+"""def get_pages_switcher(offset, dialogs, markup):
+    if offset - 10 >= 0:
+        leftbutton = types.InlineKeyboardButton('◀', callback_data='page{}'.format(offset - 10))  # callback
+    else:
+        leftbutton = None
+    if dialogs[0] - (offset + 10) >= -10:
+        rightbutton = types.InlineKeyboardButton('▶', callback_data='page{}'.format(offset + 10))
+    else:
+        rightbutton = None
+
+    if leftbutton and rightbutton:
+        markup.row(leftbutton, rightbutton)
+        return
+    if leftbutton:
+        markup.row(leftbutton)
+    else:
+        markup.row(rightbutton)
+
+
+def request_user_dialogs(session):
+    order = []
+    users_ids = []
+    dialogs = vk.API(session).messages.getDialogs(offset=offset, count=10)
+    for chat in dialogs[1:]:
+        if 'chat_id' in chat:
+            order.append({'title': chat['title'], 'id': chat['chat_id']})
+        elif chat['uid'] > 0:
+            order.append({'title': chat['title'], 'id': chat['uid']})
+            users_ids.append(chat['uid'])
+    users = vk.API(session).users.get(user_ids=users_ids, fields=[])
+    for output in order:
+        if output['title'] == ' ... ':
+            for x in users:
+                if x['uid'] == output['id']:
+                    current_user = x
+                    break
+            output['title'] = '{} {}'.format(current_user['first_name'], current_user['last_name'])
+        if not output['title']:
+            order.remove(output)
+    return order
+
+
+def get_user_dialogs(message, order, edit=False):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    for button in range(len(order)):
+        order[button] = types.InlineKeyboardButton(order[button]['title'], callback_data=str(order[button]['id']))
+    rows = [order[x:x + 2] for x in range(0, len(order), 2)]
+    for row in rows:
+        try:
+            markup.row(row[0], row[1])
+        except:
+            markup.row(row[0])
+    get_pages_switcher(offset, dialogs, markup)
+    if edit:
+        print(bot.edit_message_reply_markup(message.chat.id, message.message_id, reply_markup=markup).wait())
+    else:
+        bot.send_message(message.chat.id, '<b>Выберите Диалог</b>',
+                         parse_mode='HTML', reply_markup=markup).wait()
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_buttons(call):
+    if call.message:
+        if 'page' in call.data:
+            bot.answer_callback_query(call.id).wait()
+            print(call.data.split('page')[1])
+            get_user_dialogs(call.message, VkMessage(vk_tokens.get(str(call.from_user.id))).session,
+                             int(call.data.split('page')[1]), True)"""
 
 
 def create_thread(uid, vk_token):
@@ -83,6 +153,11 @@ def verifycode(code):
 def info_extractor(info):
     info = info[-1].url[8:-1].split('.')
     return info
+
+
+"""@bot.message_handler(commands=['dialogs'])
+def dialogs_command(message):
+    get_user_dialogs(message, VkMessage(vk_tokens.get(str(message.from_user.id))).session, 0)"""
 
 
 @bot.message_handler(commands=['stop'])
@@ -339,52 +414,47 @@ def send_contact(message, userid, group, forward_messages=None):
 
 @bot.message_handler(content_types=['document', 'voice', 'audio'])
 def reply_document(message):
-    if message.reply_to_message:
-        try:
-            vk_sender(message, send_doc)
-        except Exception as e:
-            bot.reply_to(message, 'Файл слишком большой, максимально допустимый размер *20мб*!',
-                         parse_mode='Markdown').wait()
-            print('Error: {}'.format(e))
+    try:
+        vk_sender(message, send_doc)
+    except Exception as e:
+        bot.reply_to(message, 'Файл слишком большой, максимально допустимый размер *20мб*!',
+                     parse_mode='Markdown').wait()
+        print('Error: {}'.format(e))
 
 
 @bot.message_handler(content_types=['sticker'])
 def reply_sticker(message):
-    if message.reply_to_message:
-        try:
-            vk_sender(message, send_sticker)
-        except Exception as e:
-            bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
-                         parse_mode='Markdown').wait()
-            print('Error: {}'.format(e))
+    try:
+        vk_sender(message, send_sticker)
+    except Exception as e:
+        bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
+                     parse_mode='Markdown').wait()
+        print('Error: {}'.format(e))
 
 
 @bot.message_handler(content_types=['photo'])
 def reply_photo(message):
-    if message.reply_to_message:
-        try:
-            vk_sender(message, send_photo)
-        except Exception as e:
-            bot.send_message(message.chat.id, 'Фото слишком большое, максимально допустимый размер *20мб*!',
-                             parse_mode='Markdown').wait()
-            print('Error: {}'.format(e))
+    try:
+        vk_sender(message, send_photo)
+    except Exception as e:
+        bot.send_message(message.chat.id, 'Фото слишком большое, максимально допустимый размер *20мб*!',
+                         parse_mode='Markdown').wait()
+        print('Error: {}'.format(e))
 
 
 @bot.message_handler(content_types=['video', 'video_note'])
 def reply_video(message):
-    if message.reply_to_message:
-        try:
-            vk_sender(message, send_video)
-        except Exception as e:
-            bot.reply_to(message, 'Файл слишком большой, максимально допустимый размер *20мб*!',
-                         parse_mode='Markdown').wait()
-            print('Error: {}'.format(e))
+    try:
+        vk_sender(message, send_video)
+    except Exception as e:
+        bot.reply_to(message, 'Файл слишком большой, максимально допустимый размер *20мб*!',
+                     parse_mode='Markdown').wait()
+        print('Error: {}'.format(e))
 
 
 @bot.message_handler(content_types=['contact'])
 def reply_contact(message):
-    if message.reply_to_message:
-        vk_sender(message, send_contact)
+    vk_sender(message, send_contact)
 
 
 @bot.message_handler(content_types=['text'])
@@ -414,15 +484,14 @@ def reply_text(message):
                 bot.send_message(message.chat.id, 'Неверная ссылка, попробуй ещё раз!').wait()
         else:
             bot.send_message(message.chat.id, 'Вход уже выполнен!\n/stop для выхода.').wait()
-        return
+            return
 
-    if message.reply_to_message:
-        try:
-            vk_sender(message, send_text)
-        except Exception as e:
-            bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
-                         parse_mode='Markdown').wait()
-            print('Error: {}'.format(e))
+    try:
+        vk_sender(message, send_text)
+    except Exception as e:
+        bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
+                     parse_mode='Markdown').wait()
+        print('Error: {}'.format(e))
 
 
 # bot.polling()
