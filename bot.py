@@ -1,32 +1,37 @@
 import logging
 import os
 import re
-import threading
-import ujson
-
-import cherrypy
 import redis
 import requests
 import telebot
+import threading
+import traceback
+import ujson
 import vk
 import wget
 from PIL import Image
 from telebot import types
 
-from credentials import token, vk_app_id, local_port
+import cherrypy
+
+from credentials import token, vk_app_id, local_port, bot_url
 from vk_messages import VkMessage, VkPolling
 
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
 
 vk_threads = {}
 
+vk_dialogs = {}
+
 FILE_URL = 'https://api.telegram.org/file/bot{0}/{1}'
 
 tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
 vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
 
+currentchat = {}
+
 bot = telebot.AsyncTeleBot(token)
-bot.remove_webhook()
+# bot.remove_webhook()
 
 link = 'https://oauth.vk.com/authorize?client_id={}&' \
        'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video' \
@@ -35,13 +40,14 @@ mark = types.InlineKeyboardMarkup()
 yes = types.InlineKeyboardButton('ВХОД', url=link)
 mark.add(yes)
 
-"""def get_pages_switcher(offset, dialogs, markup):
-    if offset - 10 >= 0:
-        leftbutton = types.InlineKeyboardButton('◀', callback_data='page{}'.format(offset - 10))  # callback
+
+def get_pages_switcher(markup, page, pages):
+    if page != 0:
+        leftbutton = types.InlineKeyboardButton('◀', callback_data='page{}'.format(page - 1))  # callback
     else:
         leftbutton = None
-    if dialogs[0] - (offset + 10) >= -10:
-        rightbutton = types.InlineKeyboardButton('▶', callback_data='page{}'.format(offset + 10))
+    if page + 1 < len(pages):
+        rightbutton = types.InlineKeyboardButton('▶', callback_data='page{}'.format(page + 1))
     else:
         rightbutton = None
 
@@ -54,44 +60,61 @@ mark.add(yes)
         markup.row(rightbutton)
 
 
-def request_user_dialogs(session):
+def replace_shields(text):
+    text = text.replace('&lt;', '<')
+    text = text.replace('&gt;', '>')
+    text = text.replace('&amp;', '&')
+    text = text.replace('&copy;', '©')
+    text = text.replace('&reg;', '®')
+    text = text.replace('&laquo;', '«')
+    text = text.replace('&raquo;', '«')
+    text = text.replace('&deg;', '°')
+    text = text.replace('&trade;', '™')
+    text = text.replace('&plusmn;', '±')
+    return text
+
+
+def request_user_dialogs(session, userid):
     order = []
     users_ids = []
-    dialogs = vk.API(session).messages.getDialogs(offset=offset, count=10)
+    dialogs = vk.API(session).messages.getDialogs(count=200)
     for chat in dialogs[1:]:
         if 'chat_id' in chat:
-            order.append({'title': chat['title'], 'id': chat['chat_id']})
+            if chat['title'].replace('\\', ''):
+                chat['title'] = chat['title'].replace('\\', '')
+            chat['title'] = replace_shields(chat['title'])
+            order.append({'title': chat['title'], 'id': 'group' + str(chat['chat_id'])})
         elif chat['uid'] > 0:
-            order.append({'title': chat['title'], 'id': chat['uid']})
+            order.append({'title': None, 'id': chat['uid']})
             users_ids.append(chat['uid'])
-    users = vk.API(session).users.get(user_ids=users_ids, fields=[])
+    users = vk.API(session).users.get(user_ids=users_ids, fields=['first_name', 'last_name', 'uid'])
     for output in order:
-        if output['title'] == ' ... ':
+        if output['title'] == ' ... ' or not output['title']:
             for x in users:
                 if x['uid'] == output['id']:
                     current_user = x
                     break
             output['title'] = '{} {}'.format(current_user['first_name'], current_user['last_name'])
-        if not output['title']:
-            order.remove(output)
-    return order
-
-
-def get_user_dialogs(message, order, edit=False):
-    markup = types.InlineKeyboardMarkup(row_width=2)
     for button in range(len(order)):
         order[button] = types.InlineKeyboardButton(order[button]['title'], callback_data=str(order[button]['id']))
     rows = [order[x:x + 2] for x in range(0, len(order), 2)]
-    for row in rows:
-        try:
-            markup.row(row[0], row[1])
-        except:
-            markup.row(row[0])
-    get_pages_switcher(offset, dialogs, markup)
+    pages = [rows[x:x + 4] for x in range(0, len(rows), 4)]
+    vk_dialogs[str(userid)] = pages
+
+
+def create_markup(message, user, page, edit=False):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    for i in vk_dialogs[str(user)][page]:
+        markup.row(*i)
+    get_pages_switcher(markup, page, vk_dialogs[str(user)])
     if edit:
-        print(bot.edit_message_reply_markup(message.chat.id, message.message_id, reply_markup=markup).wait())
+        bot.edit_message_text(
+            '<b>Выберите Диалог:</b> <code>{}/{}</code> стр.'.format(page + 1, len(vk_dialogs[str(user)])),
+            message.chat.id, message.message_id,
+            parse_mode='HTML', reply_markup=markup).wait()
     else:
-        bot.send_message(message.chat.id, '<b>Выберите Диалог</b>',
+        bot.send_message(message.chat.id,
+                         '<b>Выберите Диалог:</b> <code>{}/{}</code> стр.'.format(page + 1, len(vk_dialogs[str(user)])),
                          parse_mode='HTML', reply_markup=markup).wait()
 
 
@@ -100,9 +123,28 @@ def callback_buttons(call):
     if call.message:
         if 'page' in call.data:
             bot.answer_callback_query(call.id).wait()
-            print(call.data.split('page')[1])
-            get_user_dialogs(call.message, VkMessage(vk_tokens.get(str(call.from_user.id))).session,
-                             int(call.data.split('page')[1]), True)"""
+            create_markup(call.message, call.from_user.id, int(call.data.split('page')[1]), True)
+        elif 'group' in call.data:
+            session = VkMessage(vk_tokens.get(str(call.from_user.id))).session
+            chat = vk.API(session).messages.getChat(chat_id=call.data.split('group')[1], fields=[])
+            bot.answer_callback_query(call.id,
+                                      'Вы в беседе {}'.format(replace_shields(chat['title']))).wait()
+            if chat['title'].replace('\\', ''):
+                chat['title'] = chat['title'].replace('\\', '')
+            bot.send_message(call.message.chat.id,
+                             '<i>Вы в беседе {}</i>'.format(chat['title']),
+                             parse_mode='HTML').wait()
+            currentchat[str(call.from_user.id)] = call.data
+
+        elif call.data.isdigit():
+            session = VkMessage(vk_tokens.get(str(call.from_user.id))).session
+            user = vk.API(session).users.get(user_ids=call.data, fields=[])[0]
+            bot.answer_callback_query(call.id,
+                                      'Вы в чате с {} {}'.format(user['first_name'], user['last_name'])).wait()
+            bot.send_message(call.message.chat.id,
+                             '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
+                             parse_mode='HTML').wait()
+            currentchat[str(call.from_user.id)] = call.data
 
 
 def create_thread(uid, vk_token):
@@ -121,10 +163,11 @@ def check_thread(uid):
     return True
 
 
-# Creating VkPolling threads after bot reboot using existing tokens
+# Creating VkPolling threads and dialogs info after bot reboot using existing tokens
 for uid in vk_tokens.scan_iter():
     if check_thread(uid.decode("utf-8")):
         create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
+        request_user_dialogs(VkMessage(vk_tokens.get(uid.decode("utf-8"))).session, uid.decode("utf-8"))
 
 
 def stop_thread(message):
@@ -155,9 +198,11 @@ def info_extractor(info):
     return info
 
 
-"""@bot.message_handler(commands=['dialogs'])
+@bot.message_handler(commands=['dialogs'])
 def dialogs_command(message):
-    get_user_dialogs(message, VkMessage(vk_tokens.get(str(message.from_user.id))).session, 0)"""
+    session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+    request_user_dialogs(session, message.from_user.id)
+    create_markup(message, message.from_user.id, 0)
 
 
 @bot.message_handler(commands=['stop'])
@@ -171,7 +216,6 @@ def stop_command(message):
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    # TODO: Dialogs Menu
     if check_thread(message.from_user.id):
         bot.send_message(message.chat.id,
                          'Привет, этот бот поможет тебе общаться ВКонтакте, войди по кнопке ниже'
@@ -186,15 +230,15 @@ def form_request(message, method, info):
         if message.text and message.text.startswith('!'):
             if len(message.text) - 1:
                 message.text = message.text[1:]
-            if info[1] != 'None':
-                method(message, info[1], group=True, forward_messages=info[1])
+            if info[2] != 'None':
+                method(message, info[1], group=True, forward_messages=info[2])
             else:
                 method(message, info[1], group=True)
         elif message.caption and message.caption.startswith('!'):
             if len(message.caption) - 1:
                 message.caption = message.caption[1:]
-            if info[1] != 'None':
-                method(message, info[1], group=True, forward_messages=info[1])
+            if info[2] != 'None':
+                method(message, info[1], group=True, forward_messages=info[2])
         else:
             method(message, info[1], group=True)
     else:
@@ -204,26 +248,44 @@ def form_request(message, method, info):
             if info[1] != 'None':
                 method(message, info[0], group=False, forward_messages=info[1])
             else:
-                method(message, info[1], group=True)
+                method(message, info[0], group=False)
         elif message.caption and message.caption.startswith('!'):
             if len(message.caption) - 1:
                 message.caption = message.caption[1:]
             if info[1] != 'None':
                 method(message, info[0], group=False, forward_messages=info[1])
             else:
-                method(message, info[1], group=True)
+                method(message, info[0], group=False)
         else:
             method(message, info[0], group=False)
 
 
+def logged(message):
+    if vk_tokens.get(str(message.from_user.id)):
+        return True
+    else:
+        bot.send_message(message.chat.id, 'Вход не выполнен! /start для входа').wait()
+        return False
+
+
 def vk_sender(message, method):
-    if message.reply_to_message:
-        if vk_tokens.get(str(message.from_user.id)):
+    if logged(message):
+        if message.reply_to_message:
             info = info_extractor(message.reply_to_message.entities)
             if info is not None:
                 form_request(message, method, info)
-        else:
-            bot.send_message(message.chat.id, 'Вход не выполнен! /start для входа').wait()
+
+        elif str(message.from_user.id) in currentchat:
+            info = []
+            if 'group' in currentchat[str(message.from_user.id)]:
+                info.append('0')
+                info.append(currentchat[str(message.from_user.id)].split('group')[1])
+                info.append('1')
+            else:
+                info.append(currentchat[str(message.from_user.id)])
+                info.append('0')
+                info.append('0')
+            form_request(message, method, info)
 
 
 def audio_title_creator(message, performer=None, title=None):
@@ -257,7 +319,7 @@ def send_doc(message, userid, group, forward_messages=None):
         openedfile.close()
         os.remove(file)
 
-    if filetype == 'voice':
+    elif filetype == 'voice':
         openedfile = open(file, 'rb')
         files = {'file': openedfile}
         fileonserver = ujson.loads(requests.post(vk.API(session).docs.getUploadServer()['upload_url'],
@@ -267,7 +329,7 @@ def send_doc(message, userid, group, forward_messages=None):
         openedfile.close()
         os.remove(file)
 
-    if filetype == 'audio':
+    else:  # filetype == 'audio':
         newfile = file.split('.')[0] + '.aac'
         os.rename(file, newfile)
         openedfile = open(newfile, 'rb')
@@ -416,45 +478,47 @@ def send_contact(message, userid, group, forward_messages=None):
 def reply_document(message):
     try:
         vk_sender(message, send_doc)
-    except Exception as e:
+    except:
         bot.reply_to(message, 'Файл слишком большой, максимально допустимый размер *20мб*!',
                      parse_mode='Markdown').wait()
-        print('Error: {}'.format(e))
 
 
 @bot.message_handler(content_types=['sticker'])
 def reply_sticker(message):
     try:
         vk_sender(message, send_sticker)
-    except Exception as e:
-        bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
-                     parse_mode='Markdown').wait()
-        print('Error: {}'.format(e))
+    except Exception:
+        bot.reply_to(message, '*Произошла неизвестная ошибка при отправке*',
+                     parse_mode='Markdown').wait()  # TODO?: Bugreport system
+        print('Error: {}'.format(traceback.format_exc()))
 
 
 @bot.message_handler(content_types=['photo'])
 def reply_photo(message):
     try:
         vk_sender(message, send_photo)
-    except Exception as e:
+    except:
         bot.send_message(message.chat.id, 'Фото слишком большое, максимально допустимый размер *20мб*!',
                          parse_mode='Markdown').wait()
-        print('Error: {}'.format(e))
 
 
 @bot.message_handler(content_types=['video', 'video_note'])
 def reply_video(message):
     try:
         vk_sender(message, send_video)
-    except Exception as e:
+    except:
         bot.reply_to(message, 'Файл слишком большой, максимально допустимый размер *20мб*!',
                      parse_mode='Markdown').wait()
-        print('Error: {}'.format(e))
 
 
 @bot.message_handler(content_types=['contact'])
 def reply_contact(message):
-    vk_sender(message, send_contact)
+    try:
+        vk_sender(message, send_contact)
+    except Exception:
+        bot.reply_to(message, '*Произошла неизвестная ошибка при отправке*',
+                     parse_mode='Markdown').wait()
+        print('Error: {}'.format(traceback.format_exc()))
 
 
 @bot.message_handler(content_types=['text'])
@@ -468,6 +532,7 @@ def reply_text(message):
                 verifycode(code)
                 create_thread(message.from_user.id, code)
                 bot.send_message(message.chat.id, 'Вход выполнен!').wait()
+                # ---------------- INSTRUCTIONS ---------------- #
                 bot.send_message(message.chat.id, 'Бот позволяет получать и отвечать на текстовые сообщения'
                                                   ' из ВКонтакте\nПример личного сообщения:').wait()
                 bot.send_message(message.chat.id, '*Иван Петров:*\nПривет, я тут классный мессенджер нашёл,'
@@ -480,6 +545,7 @@ def reply_text(message):
                 bot.send_message(message.chat.id, 'Чтобы ответить, используй Reply на нужное сообщение.'
                                                   ' (нет, на эти не сработает, нужно реальное)',
                                  parse_mode='Markdown').wait()
+                # ---------------- INSTRUCTIONS ---------------- #
             except:
                 bot.send_message(message.chat.id, 'Неверная ссылка, попробуй ещё раз!').wait()
         else:
@@ -488,13 +554,13 @@ def reply_text(message):
 
     try:
         vk_sender(message, send_text)
-    except Exception as e:
+    except Exception:
         bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
                      parse_mode='Markdown').wait()
-        print('Error: {}'.format(e))
+        print('Error: {}'.format(traceback.format_exc()))
 
 
-# bot.polling()
+# bot.polling(none_stop=True)
 class WebhookServer(object):
     # index равнозначно /, т.к. отсутствию части после ip-адреса (грубо говоря)
     @cherrypy.expose
@@ -508,7 +574,7 @@ class WebhookServer(object):
 
 if __name__ == '__main__':
     bot.remove_webhook()
-    bot.set_webhook('https://bot.asergey.me/{}/'.format(token))
+    bot.set_webhook('https://{}/{}/'.format(bot_url, token))
     cherrypy.config.update(
         {'server.socket_host': '127.0.0.1', 'server.socket_port': local_port, 'engine.autoreload.on': False})
     cherrypy.quickstart(WebhookServer(), '/', {'/': {}})

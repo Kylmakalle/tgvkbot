@@ -1,10 +1,10 @@
-import vk
-import time
-import requests
-import wget
 import os
-import ujson
 import redis
+import requests
+import time
+import traceback
+import vk
+import wget
 
 tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
 vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
@@ -22,11 +22,11 @@ class VkPolling:
             updates = []
             try:
                 updates = vk_user.get_new_messages()
-            except Exception as e:
-                print('Error: {}'.format(e))
+            except Exception:
+                print('Error: {}'.format(traceback.format_exc()))
             if updates:
                 handle_updates(vk_user, bot, chat_id, updates)
-            for i in range(45):
+            for i in range(50):
                 if self._running:
                     time.sleep(0.1)
                 else:
