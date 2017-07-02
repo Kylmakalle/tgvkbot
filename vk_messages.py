@@ -2,12 +2,10 @@ import os
 import redis
 import requests
 import time
-import traceback
 import vk
 import wget
 
-tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
-vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
+vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
 
 
 class VkPolling:
