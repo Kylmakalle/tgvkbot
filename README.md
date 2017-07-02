@@ -1,6 +1,6 @@
 # Общий функционал
-- [Установка и развёртывание](tgvkbot/installation/README.md)
-- [Использование](tgvkbot/usage/README.md)
+- [Установка и развёртывание](/installation/README.md)
+- [Использование](/usage/README.md)
 
 <font size="4">Бот позволяет обмениваться сообщениями ВК используя Telegram, имеется возможность пересылки сообщений, а так же выбора диалога.
 <p align="center"><img src ="assets/rsz_sunset.jpg" /></p>
