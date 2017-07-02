@@ -6,7 +6,8 @@ import traceback
 import vk
 import wget
 
-vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
+tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
 
 
 class VkPolling:

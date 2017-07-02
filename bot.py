@@ -23,7 +23,8 @@ vk_dialogs = {}
 
 FILE_URL = 'https://api.telegram.org/file/bot{0}/{1}'
 
-vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
+tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
 
 currentchat = {}
 
