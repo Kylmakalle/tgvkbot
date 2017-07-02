@@ -12,9 +12,7 @@ import wget
 from PIL import Image
 from telebot import types
 
-import cherrypy
-
-from credentials import token, vk_app_id, bot_url, local_port
+from credentials import token, vk_app_id
 from vk_messages import VkMessage, VkPolling
 
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
@@ -25,8 +23,7 @@ vk_dialogs = {}
 
 FILE_URL = 'https://api.telegram.org/file/bot{0}/{1}'
 
-tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
-vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
+vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
 
 currentchat = {}
 
@@ -642,21 +639,4 @@ def reply_text(message):
         print('Error: {}'.format(traceback.format_exc()))
 
 
-# bot.polling(none_stop=True)
-class WebhookServer(object):
-    # index равнозначно /, т.к. отсутствию части после ip-адреса (грубо говоря)
-    @cherrypy.expose
-    def index(self):
-        length = int(cherrypy.request.headers['content-length'])
-        json_string = cherrypy.request.body.read(length).decode("utf-8")
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return ''
-
-
-if __name__ == '__main__':
-    bot.remove_webhook()
-    bot.set_webhook('https://{}/{}/'.format(bot_url, token))
-    cherrypy.config.update(
-        {'server.socket_host': '127.0.0.1', 'server.socket_port': local_port, 'engine.autoreload.on': False})
-    cherrypy.quickstart(WebhookServer(), '/', {'/': {}})
+bot.polling(none_stop=True)
