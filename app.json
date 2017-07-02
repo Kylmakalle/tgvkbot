@@ -1,0 +1,27 @@
+{
+  "name": "tgvkbot",
+  "description": "Бот позволяет получать и отправлять сообщения VK находясь в Telegram",
+  "repository": "https://github.com/Kylmakalle/tgvkbot",
+  "keywords": ["vk", "bot", "telegram"],
+  "env": {
+    "TELEGRAM_TOKEN": {
+      "description": "Telegram bot API токен от https://t.me/BotFather",
+      "value": "123456789:AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLL"
+    },
+  "ADMIN1": {
+      "description": "ID VK приложения из https://vk.com/apps?act=manage",
+      "required": true
+  },
+ "addons": [
+    {
+      "plan": "heroku-redis:hobby-dev",
+      "as": "Redis"
+    }
+  ],
+"formation": {
+    "bot": {
+      "quantity": 1,
+      "size": "free"
+    }
+  }
+}
