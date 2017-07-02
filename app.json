@@ -2,7 +2,6 @@
   "name": "tgvkbot",
   "description": "Бот позволяет получать и отправлять сообщения VK находясь в Telegram",
   "repository": "https://github.com/Kylmakalle/tgvkbot",
-  "website": "https://asergey.me/tgvkbot/",
   "keywords": ["vk", "bot", "telegram"],
   "env": {
     "TELEGRAM_TOKEN": {
