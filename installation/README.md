@@ -32,7 +32,7 @@ D0%BD%D1%8B%D0%B5%20%D0%BE%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D0%BD%D0%B8
 
 Нажав на кнопку ниже вы попадёте на страницу развёртывания, где будут поля:
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Kylmakalle/tgvkbot/tree/master)
 - **Имя приложения** - можно оставить пустым, Heroku выберет за вас.
 - **Регион развёртывания** - выбираем Европу, чтобы бот был пошустрее.
 - **Telegram API Token** - токен бота полученный ранее.
