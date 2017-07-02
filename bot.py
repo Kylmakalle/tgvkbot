@@ -173,6 +173,8 @@ def stop_thread(message):
             t.terminate()
             th.join()
             vk_tokens.delete(str(message.from_user.id))
+            vk_dialogs.pop(str(message.from_user.id), None)
+            currentchat.pop(str(message.from_user.id), None)
 
 
 def extract_unique_code(text):
