@@ -1,5 +1,6 @@
 # Общий функционал
-[Установка](https://www.asergey.me/tgvkbot/installation)
+- [Установка и развёртывание](https://www.asergey.me/tgvkbot/installation)
+- [Использование](https://www.asergey.me/tgvkbot/usage)
 
 <font size="4">Бот позволяет обмениваться сообщениями ВК используя Telegram, имеется возможность пересылки сообщений, а так же выбора диалога.
 <p align="center"><img src ="assets/rsz_sunset.jpg" /></p>
