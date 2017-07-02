@@ -12,7 +12,9 @@ import wget
 from PIL import Image
 from telebot import types
 
-from credentials import token, vk_app_id
+import cherrypy
+
+from credentials import token, vk_app_id, bot_url, local_port
 from vk_messages import VkMessage, VkPolling
 
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
@@ -595,4 +597,20 @@ def reply_text(message):
         print('Error: {}'.format(traceback.format_exc()))
 
 
-bot.polling(none_stop=True)
+class WebhookServer(object):
+    # index равнозначно /, т.к. отсутствию части после ip-адреса (грубо говоря)
+    @cherrypy.expose
+    def index(self):
+        length = int(cherrypy.request.headers['content-length'])
+        json_string = cherrypy.request.body.read(length).decode("utf-8")
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return ''
+
+
+if __name__ == '__main__':
+    bot.remove_webhook()
+    bot.set_webhook('https://{}/{}/'.format(bot_url, token))
+    cherrypy.config.update(
+        {'server.socket_host': '127.0.0.1', 'server.socket_port': local_port, 'engine.autoreload.on': False})
+    cherrypy.quickstart(WebhookServer(), '/', {'/': {}})
