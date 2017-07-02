@@ -3,6 +3,11 @@
   "description": "Бот позволяет получать и отправлять сообщения VK находясь в Telegram",
   "repository": "https://github.com/Kylmakalle/tgvkbot",
   "keywords": ["vk", "bot", "telegram"],
+  "buildpacks":[
+   {
+    "url": "heroku/python"
+   }
+  ],
   "env": {
     "TELEGRAM_TOKEN": {
       "description": "Telegram bot API токен от https://t.me/BotFather",
