@@ -12,7 +12,9 @@ import wget
 from PIL import Image
 from telebot import types
 
-from credentials import token, vk_app_id
+import cherrypy
+
+from credentials import token, vk_app_id, bot_url, local_port
 from vk_messages import VkMessage, VkPolling
 
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
@@ -23,7 +25,8 @@ vk_dialogs = {}
 
 FILE_URL = 'https://api.telegram.org/file/bot{0}/{1}'
 
-vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
+tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
 
 currentchat = {}
 
@@ -32,28 +35,22 @@ bot = telebot.AsyncTeleBot(token)
 link = 'https://oauth.vk.com/authorize?client_id={}&' \
        'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video' \
        '&response_type=token&v=5.65'.format(vk_app_id)
-mark = types.InlineKeyboardMarkup()
-yes = types.InlineKeyboardButton('ВХОД', url=link)
-mark.add(yes)
 
 
 def get_pages_switcher(markup, page, pages):
     if page != 0:
         leftbutton = types.InlineKeyboardButton('◀', callback_data='page{}'.format(page - 1))  # callback
     else:
-        leftbutton = None
+        leftbutton = types.InlineKeyboardButton('Поиск 🔍', callback_data='search')
     if page + 1 < len(pages):
         rightbutton = types.InlineKeyboardButton('▶', callback_data='page{}'.format(page + 1))
     else:
         rightbutton = None
 
-    if leftbutton and rightbutton:
+    if rightbutton:
         markup.row(leftbutton, rightbutton)
-        return
-    if leftbutton:
-        markup.row(leftbutton)
     else:
-        markup.row(rightbutton)
+        markup.row(leftbutton)
 
 
 def replace_shields(text):
@@ -114,12 +111,41 @@ def create_markup(message, user, page, edit=False):
                          parse_mode='HTML', reply_markup=markup).wait()
 
 
+def search_users(message, text):
+    session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    result = vk.API(session).messages.searchDialogs(q=text, limit=10, fields=[])
+    for chat in result:
+        if chat['type'] == 'profile':
+            markup.add(types.InlineKeyboardButton('{} {}'.format(chat['first_name'], chat['last_name']),
+                                                  callback_data=str(chat['uid'])))
+        elif chat['type'] == 'chat':
+            if chat['title'].replace('\\', ''):
+                chat['title'] = chat['title'].replace('\\', '')
+            markup.add(
+                types.InlineKeyboardButton(replace_shields(chat['title']),
+                                           callback_data='group' + str(chat['chat_id'])))
+    if markup.keyboard:
+        markup.add(types.InlineKeyboardButton('Поиск 🔍', callback_data='search'))
+        bot.send_message(message.from_user.id, '<b>Результат поиска по</b> <i>{}</i>'.format(text),
+                         reply_markup=markup, parse_mode='HTML')
+    else:
+        markup.add(types.InlineKeyboardButton('Поиск 🔍', callback_data='search'))
+        bot.send_message(message.from_user.id, '<b>Ничего не найдено по запросу</b> <i>{}</i>'.format(text),
+                         parse_mode='HTML', reply_markup=markup)
+
+
 @bot.callback_query_handler(func=lambda call: True)
 def callback_buttons(call):
     if call.message:
         if 'page' in call.data:
             bot.answer_callback_query(call.id).wait()
             create_markup(call.message, call.from_user.id, int(call.data.split('page')[1]), True)
+        elif 'search' in call.data:
+            markup = types.ForceReply(selective=False)
+            bot.answer_callback_query(call.id, 'Поиск беседы 🔍').wait()
+            bot.send_message(call.from_user.id, '<b>Поиск беседы</b> 🔍',
+                             parse_mode='HTML', reply_markup=markup).wait()
         elif 'group' in call.data:
             session = VkMessage(vk_tokens.get(str(call.from_user.id))).session
             chat = vk.API(session).messages.getChat(chat_id=call.data.split('group')[1], fields=[])
@@ -131,7 +157,6 @@ def callback_buttons(call):
                              '<i>Вы в беседе {}</i>'.format(chat['title']),
                              parse_mode='HTML').wait()
             currentchat[str(call.from_user.id)] = call.data
-
         elif call.data.isdigit():
             session = VkMessage(vk_tokens.get(str(call.from_user.id))).session
             user = vk.API(session).users.get(user_ids=call.data, fields=[])[0]
@@ -198,46 +223,61 @@ def info_extractor(info):
 
 @bot.message_handler(commands=['chat'])
 def chat_command(message):
-    if str(message.from_user.id) in currentchat:
-        if 'group' in currentchat[str(message.from_user.id)]:
-            session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-            chat = vk.API(session).messages.getChat(chat_id=currentchat[str(message.from_user.id)].split('group')[1],
-                                                    fields=[])
-            if chat['title'].replace('\\', ''):
-                chat['title'] = chat['title'].replace('\\', '')
-            bot.send_message(message.from_user.id,
-                             '<i>Вы в беседе {}</i>'.format(chat['title']),
-                             parse_mode='HTML').wait()
+    if logged(message):
+        if str(message.from_user.id) in currentchat:
+            if 'group' in currentchat[str(message.from_user.id)]:
+                session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+                chat = vk.API(session).messages.getChat(
+                    chat_id=currentchat[str(message.from_user.id)].split('group')[1],
+                    fields=[])
+                if chat['title'].replace('\\', ''):
+                    chat['title'] = chat['title'].replace('\\', '')
+                bot.send_message(message.from_user.id,
+                                 '<i>Вы в беседе {}</i>'.format(chat['title']),
+                                 parse_mode='HTML').wait()
+            else:
+                session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+                user = vk.API(session).users.get(user_ids=currentchat[str(message.from_user.id)], fields=[])[0]
+                bot.send_message(message.from_user.id,
+                                 '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
+                                 parse_mode='HTML').wait()
         else:
-            session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-            user = vk.API(session).users.get(user_ids=currentchat[str(message.from_user.id)], fields=[])[0]
             bot.send_message(message.from_user.id,
-                             '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
+                             '<i>Вы не находитесь в чате</i>',
                              parse_mode='HTML').wait()
-    else:
-        bot.send_message(message.from_user.id,
-                         '<i>Вы не находитесь в чате</i>',
-                         parse_mode='HTML').wait()
 
 
 @bot.message_handler(commands=['leave'])
 def leave_command(message):
-    if str(message.from_user.id) in currentchat:
-        currentchat.pop(str(message.from_user.id), None)
-        bot.send_message(message.from_user.id,
-                         '<i>Вы вышли из чата</i>',
-                         parse_mode='HTML').wait()
-    else:
-        bot.send_message(message.from_user.id,
-                         '<i>Вы не находитесь в чате</i>',
-                         parse_mode='HTML').wait()
+    if logged(message):
+        if str(message.from_user.id) in currentchat:
+            currentchat.pop(str(message.from_user.id), None)
+            bot.send_message(message.from_user.id,
+                             '<i>Вы вышли из чата</i>',
+                             parse_mode='HTML').wait()
+        else:
+            bot.send_message(message.from_user.id,
+                             '<i>Вы не находитесь в чате</i>',
+                             parse_mode='HTML').wait()
 
 
 @bot.message_handler(commands=['dialogs'])
 def dialogs_command(message):
-    session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-    request_user_dialogs(session, message.from_user.id)
-    create_markup(message, message.from_user.id, 0)
+    if logged(message):
+        session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+        request_user_dialogs(session, message.from_user.id)
+        create_markup(message, message.from_user.id, 0)
+
+
+@bot.message_handler(commands=['search'])
+def search_command(message):
+    if logged(message):
+        markup = types.ForceReply(selective=False)
+        if telebot.util.extract_arguments(message.text):
+            search_users(message, telebot.util.extract_arguments(message.text))
+        else:
+            bot.send_message(message.from_user.id, '<b>Поиск беседы</b> 🔍',
+                             parse_mode='HTML', reply_markup=markup).wait()
 
 
 @bot.message_handler(commands=['stop'])
@@ -252,6 +292,9 @@ def stop_command(message):
 @bot.message_handler(commands=['start'])
 def start_command(message):
     if check_thread(message.from_user.id):
+        mark = types.InlineKeyboardMarkup()
+        login = types.InlineKeyboardButton('ВХОД', url=link)
+        mark.add(login)
         bot.send_message(message.from_user.id,
                          'Привет, этот бот поможет тебе общаться ВКонтакте, войди по кнопке ниже'
                          ' и отправь мне то, что получишь в адресной строке.',
@@ -587,6 +630,9 @@ def reply_text(message):
         else:
             bot.send_message(message.from_user.id, 'Вход уже выполнен!\n/stop для выхода.').wait()
             return
+    if message.reply_to_message and message.reply_to_message.text == 'Поиск беседы 🔍':
+        search_users(message, message.text)
+        return
 
     try:
         vk_sender(message, send_text)
@@ -596,4 +642,21 @@ def reply_text(message):
         print('Error: {}'.format(traceback.format_exc()))
 
 
-bot.polling(none_stop=True)
+# bot.polling(none_stop=True)
+class WebhookServer(object):
+    # index равнозначно /, т.к. отсутствию части после ip-адреса (грубо говоря)
+    @cherrypy.expose
+    def index(self):
+        length = int(cherrypy.request.headers['content-length'])
+        json_string = cherrypy.request.body.read(length).decode("utf-8")
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return ''
+
+
+if __name__ == '__main__':
+    bot.remove_webhook()
+    bot.set_webhook('https://{}/{}/'.format(bot_url, token))
+    cherrypy.config.update(
+        {'server.socket_host': '127.0.0.1', 'server.socket_port': local_port, 'engine.autoreload.on': False})
+    cherrypy.quickstart(WebhookServer(), '/', {'/': {}})
