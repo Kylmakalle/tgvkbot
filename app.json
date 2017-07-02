@@ -11,6 +11,7 @@
   "VK_APP": {
       "description": "ID VK приложения из https://vk.com/apps?act=manage",
       "required": true
+    }
   },
  "addons": [
     {
