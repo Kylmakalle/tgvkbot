@@ -22,8 +22,8 @@ class VkPolling:
             updates = []
             try:
                 updates = vk_user.get_new_messages()
-            except Exception:
-                print('Error: {}'.format(traceback.format_exc()))
+            except requests.exceptions.ReadTimeout as e:
+                print('Error: {}'.format(e))
             if updates:
                 handle_updates(vk_user, bot, chat_id, updates)
             for i in range(50):
