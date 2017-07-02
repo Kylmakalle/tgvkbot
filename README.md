@@ -1,8 +1,8 @@
 # Общий функционал
 <font size="5">
 
-- [Установка и развёртывание](installation/README.md)
-- [Использование](usage/README.md)
+- <a href="installation/README.md">Установка и развёртывание</a>
+- <a href="usage/README.md">Использование</a>
 
 Бот позволяет обмениваться сообщениями ВК используя Telegram, имеется возможность пересылки сообщений, а так же выбора диалога.
 <p align="center"><img src ="assets/rsz_sunset.jpg" /></p>
