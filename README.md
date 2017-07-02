@@ -8,3 +8,5 @@
 Полный функционал, инструкции по лёгкой установке и деплою (на Heroku), а так же хостингу на своём сервере будут позже.
 
 **Stay Tuned!** 
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
