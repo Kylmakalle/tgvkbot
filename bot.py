@@ -12,9 +12,7 @@ import wget
 from PIL import Image
 from telebot import types
 
-import cherrypy
-
-from credentials import token, vk_app_id, local_port, bot_url
+from credentials import token, vk_app_id
 from vk_messages import VkMessage, VkPolling
 
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
@@ -25,13 +23,11 @@ vk_dialogs = {}
 
 FILE_URL = 'https://api.telegram.org/file/bot{0}/{1}'
 
-tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
-vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
+vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
 
 currentchat = {}
 
 bot = telebot.AsyncTeleBot(token)
-# bot.remove_webhook()
 
 link = 'https://oauth.vk.com/authorize?client_id={}&' \
        'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video' \
@@ -110,10 +106,10 @@ def create_markup(message, user, page, edit=False):
     if edit:
         bot.edit_message_text(
             '<b>Выберите Диалог:</b> <code>{}/{}</code> стр.'.format(page + 1, len(vk_dialogs[str(user)])),
-            message.chat.id, message.message_id,
+            message.from_user.id, message.message_id,
             parse_mode='HTML', reply_markup=markup).wait()
     else:
-        bot.send_message(message.chat.id,
+        bot.send_message(message.from_user.id,
                          '<b>Выберите Диалог:</b> <code>{}/{}</code> стр.'.format(page + 1, len(vk_dialogs[str(user)])),
                          parse_mode='HTML', reply_markup=markup).wait()
 
@@ -131,7 +127,7 @@ def callback_buttons(call):
                                       'Вы в беседе {}'.format(replace_shields(chat['title']))).wait()
             if chat['title'].replace('\\', ''):
                 chat['title'] = chat['title'].replace('\\', '')
-            bot.send_message(call.message.chat.id,
+            bot.send_message(call.message.from_user.id,
                              '<i>Вы в беседе {}</i>'.format(chat['title']),
                              parse_mode='HTML').wait()
             currentchat[str(call.from_user.id)] = call.data
@@ -141,7 +137,7 @@ def callback_buttons(call):
             user = vk.API(session).users.get(user_ids=call.data, fields=[])[0]
             bot.answer_callback_query(call.id,
                                       'Вы в чате с {} {}'.format(user['first_name'], user['last_name'])).wait()
-            bot.send_message(call.message.chat.id,
+            bot.send_message(call.message.from_user.id,
                              '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
                              parse_mode='HTML').wait()
             currentchat[str(call.from_user.id)] = call.data
@@ -198,6 +194,43 @@ def info_extractor(info):
     return info
 
 
+@bot.message_handler(commands=['chat'])
+def chat_command(message):
+    if str(message.from_user.id) in currentchat:
+        if 'group' in currentchat[str(message.from_user.id)]:
+            session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+            chat = vk.API(session).messages.getChat(chat_id=currentchat[str(message.from_user.id)].split('group')[1],
+                                                    fields=[])
+            if chat['title'].replace('\\', ''):
+                chat['title'] = chat['title'].replace('\\', '')
+            bot.send_message(message.from_user.id,
+                             '<i>Вы в беседе {}</i>'.format(chat['title']),
+                             parse_mode='HTML').wait()
+        else:
+            session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+            user = vk.API(session).users.get(user_ids=currentchat[str(message.from_user.id)], fields=[])[0]
+            bot.send_message(message.from_user.id,
+                             '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
+                             parse_mode='HTML').wait()
+    else:
+        bot.send_message(message.from_user.id,
+                         '<i>Вы не находитесь в чате</i>',
+                         parse_mode='HTML').wait()
+
+
+@bot.message_handler(commands=['leave'])
+def leave_command(message):
+    if str(message.from_user.id) in currentchat:
+        currentchat.pop(str(message.from_user.id), None)
+        bot.send_message(message.from_user.id,
+                         '<i>Вы вышли из чата</i>',
+                         parse_mode='HTML').wait()
+    else:
+        bot.send_message(message.from_user.id,
+                         '<i>Вы не находитесь в чате</i>',
+                         parse_mode='HTML').wait()
+
+
 @bot.message_handler(commands=['dialogs'])
 def dialogs_command(message):
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
@@ -209,20 +242,20 @@ def dialogs_command(message):
 def stop_command(message):
     if not check_thread(message.from_user.id):
         stop_thread(message)
-        bot.send_message(message.chat.id, 'Успешный выход!').wait()
+        bot.send_message(message.from_user.id, 'Успешный выход!').wait()
     else:
-        bot.send_message(message.chat.id, 'Вход не был выполнен!').wait()
+        bot.send_message(message.from_user.id, 'Вход не был выполнен!').wait()
 
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
     if check_thread(message.from_user.id):
-        bot.send_message(message.chat.id,
+        bot.send_message(message.from_user.id,
                          'Привет, этот бот поможет тебе общаться ВКонтакте, войди по кнопке ниже'
                          ' и отправь мне то, что получишь в адресной строке.',
                          reply_markup=mark).wait()
     else:
-        bot.send_message(message.chat.id, 'Вход уже выполнен!\n/stop для выхода.').wait()
+        bot.send_message(message.from_user.id, 'Вход уже выполнен!\n/stop для выхода.').wait()
 
 
 def form_request(message, method, info):
@@ -264,7 +297,7 @@ def logged(message):
     if vk_tokens.get(str(message.from_user.id)):
         return True
     else:
-        bot.send_message(message.chat.id, 'Вход не выполнен! /start для входа').wait()
+        bot.send_message(message.from_user.id, 'Вход не выполнен! /start для входа').wait()
         return False
 
 
@@ -498,7 +531,7 @@ def reply_photo(message):
     try:
         vk_sender(message, send_photo)
     except:
-        bot.send_message(message.chat.id, 'Фото слишком большое, максимально допустимый размер *20мб*!',
+        bot.send_message(message.from_user.id, 'Фото слишком большое, максимально допустимый размер *20мб*!',
                          parse_mode='Markdown').wait()
 
 
@@ -531,25 +564,26 @@ def reply_text(message):
             try:
                 verifycode(code)
                 create_thread(message.from_user.id, code)
-                bot.send_message(message.chat.id, 'Вход выполнен!').wait()
+                bot.send_message(message.from_user.id, 'Вход выполнен!').wait()
                 # ---------------- INSTRUCTIONS ---------------- #
-                bot.send_message(message.chat.id, 'Бот позволяет получать и отвечать на текстовые сообщения'
-                                                  ' из ВКонтакте\nПример личного сообщения:').wait()
-                bot.send_message(message.chat.id, '*Иван Петров:*\nПривет, я тут классный мессенджер нашёл,'
-                                                  ' попробуешь? telegram.org/download', parse_mode='Markdown').wait()
-                bot.send_message(message.chat.id, 'Для сообщений из групповых чатов будет указываться'
-                                                  ' чат после имени отправителя:').wait()
-                bot.send_message(message.chat.id, '*Ник Невидов @ My English is perfect:*\n'
-                                                  'London is the capital of Great Britain',
+                bot.send_message(message.from_user.id, 'Бот позволяет получать и отвечать на текстовые сообщения'
+                                                       ' из ВКонтакте\nПример личного сообщения:').wait()
+                bot.send_message(message.from_user.id, '*Иван Петров:*\nПривет, я тут классный мессенджер нашёл,'
+                                                       ' попробуешь? telegram.org/download',
                                  parse_mode='Markdown').wait()
-                bot.send_message(message.chat.id, 'Чтобы ответить, используй Reply на нужное сообщение.'
-                                                  ' (нет, на эти не сработает, нужно реальное)',
+                bot.send_message(message.from_user.id, 'Для сообщений из групповых чатов будет указываться'
+                                                       ' чат после имени отправителя:').wait()
+                bot.send_message(message.from_user.id, '*Ник Невидов @ My English is perfect:*\n'
+                                                       'London is the capital of Great Britain',
+                                 parse_mode='Markdown').wait()
+                bot.send_message(message.from_user.id, 'Чтобы ответить, используй Reply на нужное сообщение.'
+                                                       ' (нет, на эти не сработает, нужно реальное)',
                                  parse_mode='Markdown').wait()
                 # ---------------- INSTRUCTIONS ---------------- #
             except:
-                bot.send_message(message.chat.id, 'Неверная ссылка, попробуй ещё раз!').wait()
+                bot.send_message(message.from_user.id, 'Неверная ссылка, попробуй ещё раз!').wait()
         else:
-            bot.send_message(message.chat.id, 'Вход уже выполнен!\n/stop для выхода.').wait()
+            bot.send_message(message.from_user.id, 'Вход уже выполнен!\n/stop для выхода.').wait()
             return
 
     try:
@@ -560,21 +594,4 @@ def reply_text(message):
         print('Error: {}'.format(traceback.format_exc()))
 
 
-# bot.polling(none_stop=True)
-class WebhookServer(object):
-    # index равнозначно /, т.к. отсутствию части после ip-адреса (грубо говоря)
-    @cherrypy.expose
-    def index(self):
-        length = int(cherrypy.request.headers['content-length'])
-        json_string = cherrypy.request.body.read(length).decode("utf-8")
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return ''
-
-
-if __name__ == '__main__':
-    bot.remove_webhook()
-    bot.set_webhook('https://{}/{}/'.format(bot_url, token))
-    cherrypy.config.update(
-        {'server.socket_host': '127.0.0.1', 'server.socket_port': local_port, 'engine.autoreload.on': False})
-    cherrypy.quickstart(WebhookServer(), '/', {'/': {}})
+bot.polling(none_stop=True)
