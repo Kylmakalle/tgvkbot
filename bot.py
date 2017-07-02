@@ -223,56 +223,61 @@ def info_extractor(info):
 
 @bot.message_handler(commands=['chat'])
 def chat_command(message):
-    if str(message.from_user.id) in currentchat:
-        if 'group' in currentchat[str(message.from_user.id)]:
-            session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-            chat = vk.API(session).messages.getChat(chat_id=currentchat[str(message.from_user.id)].split('group')[1],
-                                                    fields=[])
-            if chat['title'].replace('\\', ''):
-                chat['title'] = chat['title'].replace('\\', '')
-            bot.send_message(message.from_user.id,
-                             '<i>Вы в беседе {}</i>'.format(chat['title']),
-                             parse_mode='HTML').wait()
+    if logged(message):
+        if str(message.from_user.id) in currentchat:
+            if 'group' in currentchat[str(message.from_user.id)]:
+                session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+                chat = vk.API(session).messages.getChat(
+                    chat_id=currentchat[str(message.from_user.id)].split('group')[1],
+                    fields=[])
+                if chat['title'].replace('\\', ''):
+                    chat['title'] = chat['title'].replace('\\', '')
+                bot.send_message(message.from_user.id,
+                                 '<i>Вы в беседе {}</i>'.format(chat['title']),
+                                 parse_mode='HTML').wait()
+            else:
+                session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+                user = vk.API(session).users.get(user_ids=currentchat[str(message.from_user.id)], fields=[])[0]
+                bot.send_message(message.from_user.id,
+                                 '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
+                                 parse_mode='HTML').wait()
         else:
-            session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-            user = vk.API(session).users.get(user_ids=currentchat[str(message.from_user.id)], fields=[])[0]
             bot.send_message(message.from_user.id,
-                             '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
+                             '<i>Вы не находитесь в чате</i>',
                              parse_mode='HTML').wait()
-    else:
-        bot.send_message(message.from_user.id,
-                         '<i>Вы не находитесь в чате</i>',
-                         parse_mode='HTML').wait()
 
 
 @bot.message_handler(commands=['leave'])
 def leave_command(message):
-    if str(message.from_user.id) in currentchat:
-        currentchat.pop(str(message.from_user.id), None)
-        bot.send_message(message.from_user.id,
-                         '<i>Вы вышли из чата</i>',
-                         parse_mode='HTML').wait()
-    else:
-        bot.send_message(message.from_user.id,
-                         '<i>Вы не находитесь в чате</i>',
-                         parse_mode='HTML').wait()
+    if logged(message):
+        if str(message.from_user.id) in currentchat:
+            currentchat.pop(str(message.from_user.id), None)
+            bot.send_message(message.from_user.id,
+                             '<i>Вы вышли из чата</i>',
+                             parse_mode='HTML').wait()
+        else:
+            bot.send_message(message.from_user.id,
+                             '<i>Вы не находитесь в чате</i>',
+                             parse_mode='HTML').wait()
 
 
 @bot.message_handler(commands=['dialogs'])
 def dialogs_command(message):
-    session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-    request_user_dialogs(session, message.from_user.id)
-    create_markup(message, message.from_user.id, 0)
+    if logged(message):
+        session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
+        request_user_dialogs(session, message.from_user.id)
+        create_markup(message, message.from_user.id, 0)
 
 
 @bot.message_handler(commands=['search'])
 def search_command(message):
-    markup = types.ForceReply(selective=False)
-    if telebot.util.extract_arguments(message.text):
-        search_users(message, telebot.util.extract_arguments(message.text))
-    else:
-        bot.send_message(message.from_user.id, '<b>Поиск беседы</b> 🔍',
-                         parse_mode='HTML', reply_markup=markup).wait()
+    if logged(message):
+        markup = types.ForceReply(selective=False)
+        if telebot.util.extract_arguments(message.text):
+            search_users(message, telebot.util.extract_arguments(message.text))
+        else:
+            bot.send_message(message.from_user.id, '<b>Поиск беседы</b> 🔍',
+                             parse_mode='HTML', reply_markup=markup).wait()
 
 
 @bot.message_handler(commands=['stop'])
