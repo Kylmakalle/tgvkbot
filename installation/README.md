@@ -1,6 +1,6 @@
 # Установка и развёртывание бота.
-<font size="5">
-В первую очередь, почему же нужно создавать именно своего бота?
+
+В первую очередь, _почему же нужно создавать именно своего бота?_
 - Ограничения <a href="https://core.telegram.org/bots/faq#broadcasting-to-users" target="_blank">Telegram</a>
 - Ограничения <a href="https://vk.com/dev/api_requests?f=3.1.%20%D0%A7%D0%B0%D1%81%D1%82%D0%BE%D1%82%
 D0%BD%D1%8B%D0%B5%20%D0%BE%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D0%BD%D0%B8%D1%8F" target="_blank">VK</a>
@@ -45,5 +45,5 @@ D0%BD%D1%8B%D0%B5%20%D0%BE%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D0%BD%D0%B8
 
 Если вы вдруг что-то напутали с токеном и/или ID, их всегда можно настроить перейдя в _Settings->Config Vars_ соответствующего приложения в своей панели управления https://dashboard.heroku.com/ 
 
-Если всё прошло гладко, то можно ознакомиться с <a href="tgvkbot/usage/README.md">Использованием</a>
-</font>
+Если всё прошло гладко, то можно ознакомиться с [Использованием](tgvkbot/usage/README.md)
+
