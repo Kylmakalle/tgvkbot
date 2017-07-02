@@ -106,7 +106,7 @@ def create_markup(message, user, page, edit=False):
     if edit:
         bot.edit_message_text(
             '<b>Выберите Диалог:</b> <code>{}/{}</code> стр.'.format(page + 1, len(vk_dialogs[str(user)])),
-            message.from_user.id, message.message_id,
+            message.chat.id, message.message_id,
             parse_mode='HTML', reply_markup=markup).wait()
     else:
         bot.send_message(message.from_user.id,
