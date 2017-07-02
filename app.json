@@ -8,7 +8,7 @@
       "description": "Telegram bot API токен от https://t.me/BotFather",
       "value": "123456789:AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLL"
     },
-  "ADMIN1": {
+  "VK_APP": {
       "description": "ID VK приложения из https://vk.com/apps?act=manage",
       "required": true
   },
