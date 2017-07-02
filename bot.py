@@ -127,7 +127,7 @@ def callback_buttons(call):
                                       'Вы в беседе {}'.format(replace_shields(chat['title']))).wait()
             if chat['title'].replace('\\', ''):
                 chat['title'] = chat['title'].replace('\\', '')
-            bot.send_message(call.message.from_user.id,
+            bot.send_message(call.from_user.id,
                              '<i>Вы в беседе {}</i>'.format(chat['title']),
                              parse_mode='HTML').wait()
             currentchat[str(call.from_user.id)] = call.data
@@ -137,7 +137,7 @@ def callback_buttons(call):
             user = vk.API(session).users.get(user_ids=call.data, fields=[])[0]
             bot.answer_callback_query(call.id,
                                       'Вы в чате с {} {}'.format(user['first_name'], user['last_name'])).wait()
-            bot.send_message(call.message.from_user.id,
+            bot.send_message(call.from_user.id,
                              '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
                              parse_mode='HTML').wait()
             currentchat[str(call.from_user.id)] = call.data
