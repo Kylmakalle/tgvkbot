@@ -7,4 +7,4 @@
 Настройка вебхуков по гайду от [@Groosha](https://www.gitbook.com/book/groosha/telegram-bot-lessons)
 
 
-[Использование](https://www.asergey.me/usage)
+[Использование](https://www.asergey.me/tgvkbot/usage)
