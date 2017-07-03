@@ -22,11 +22,11 @@
 
 Для сообщений из групповых чатов будет указываться чат после имени отправителя
 
-<p align="center"><img src ="/tgvkbot/rsz_groupmessage.jpg" /></p>
+<p align="center"><img src ="/tgvkbot/assets/rsz_groupmessage.jpg" /></p>
 
 Ответ в чат откуда пришло сообщение (ЛС/Беседа) производится с помощью функции _Reply_ в самом _Telegram_
 
-<p align="center"><img src ="/tgvkbot/rsz_reply.jpg" /></p>
+<p align="center"><img src ="/tgvkbot/assets/rsz_reply.jpg" /></p>
 
 Однако, не нужно делать _Reply_ если вы находитесь в определённом чате (проверить можно командой `/chat`)
 
