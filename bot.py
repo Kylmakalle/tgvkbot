@@ -400,8 +400,9 @@ def send_doc(message, userid, group, forward_messages=None):
     elif filetype == 'voice':
         openedfile = open(file, 'rb')
         files = {'file': openedfile}
-        fileonserver = ujson.loads(requests.post(vk.API(session).docs.getUploadServer()['upload_url'],
-                                                 files=files).text)
+        fileonserver = ujson.loads(
+            requests.post(vk.API(session).docs.getUploadServer(type='audio_message')['upload_url'],
+                          files=files).text)
         attachment = vk.API(session).docs.save(file=fileonserver['file'], title='Аудиосообщение',
                                                tags='')
         openedfile.close()
