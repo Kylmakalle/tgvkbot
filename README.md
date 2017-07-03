@@ -2,7 +2,7 @@
 
 - [Создание и развёртывание](installation/README.md)
 - [Использование](usage/README.md)
-- [Канал в Telegram](https://t.me/tg_vk)
+- [Канал в Telegram](https://t.me/tg_vk) - обновления, поддержа
 
 Бот позволяет обмениваться сообщениями ВК используя Telegram, имеется возможность пересылки сообщений, а так же выбора диалога.
 <p align="center"><img src ="assets/rsz_sunset (1).jpg" /></p>
@@ -21,4 +21,4 @@
 
 - [Создание и развёртывание](installation/README.md)
 - [Использование](usage/README.md)
-- [Канал в Telegram](https://t.me/tg_vk)
+- [Канал в Telegram](https://t.me/tg_vk) - обновления, поддержа
