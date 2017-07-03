@@ -26,7 +26,7 @@ class VkPolling:
                 print('Error: {}'.format(e))
             if updates:
                 handle_updates(vk_user, bot, chat_id, updates)
-            for i in range(50):
+            for i in range(60):
                 if self._running:
                     time.sleep(0.1)
                 else:
