@@ -372,13 +372,13 @@ Small Device Styles
 
 @media screen and (max-width: 992px) {
   img {
-    max-width: 90%;
+    max-width: 100%;
   }
 }
 
 @media screen and (max-width: 480px) {
   body {
-    font-size:12px;
+    font-size:14px;
   }
 
   #downloads {
