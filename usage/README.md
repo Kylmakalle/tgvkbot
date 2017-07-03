@@ -18,15 +18,15 @@
 
 Бот отправляет личные сообщения в таком виде:
 
-<p align="center"><img src ="/assets/rsz_privatemessage.jpg" /></p>
+<p align="center"><img src ="/tgvkbot/assets/rsz_privatemessage.jpg" /></p>
 
 Для сообщений из групповых чатов будет указываться чат после имени отправителя
 
-<p align="center"><img src ="/assets/rsz_groupmessage.jpg" /></p>
+<p align="center"><img src ="/tgvkbot/rsz_groupmessage.jpg" /></p>
 
 Ответ в чат откуда пришло сообщение (ЛС/Беседа) производится с помощью функции _Reply_ в самом _Telegram_
 
-<p align="center"><img src ="/assets/rsz_reply.jpg" /></p>
+<p align="center"><img src ="/tgvkbot/rsz_reply.jpg" /></p>
 
 Однако, не нужно делать _Reply_ если вы находитесь в определённом чате (проверить можно командой `/chat`)
 
@@ -35,8 +35,8 @@
 Тем самым **функция Reply имеет приоритет!**
 
 Для "пересылки" сообшения написанного ВК в сам чат ВК, нужно написать `!` первым символом в сообщении/подписи к фото/документу отправленного из Telegram.
-<p align="center"><img src ="/assets/rsz_forwardtg.jpg" /></p>
-<p align="center"><img src ="/assets/forwardvk.PNG" /></p>
+<p align="center"><img src ="/tgvkbot/assets/rsz_forwardtg.jpg" /></p>
+<p align="center"><img src ="/tgvkbot/assets/forwardvk.PNG" /></p>
 
 По возможности бот будет отправлять вложения из ВК как документы, или давать ссылку с превью. Если же это невозможно, бот даст прямую ссылку на файл. Исключение на получение <a href="https://vc.ru/n/vk-music-noapi" target="_blank">аудио</a>, для них будет даваться ссылка на раздел аудио VK. Отправка музыкальных файлов из Telegram **поддерживается**, однако вся музыка конвертируется в расширение `.aac`
 
