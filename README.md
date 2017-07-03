@@ -2,10 +2,10 @@
 
 - [Установка и развёртывание](installation/README.md)
 - [Использование](usage/README.md)
+- [Канал в Telegram](https://t.me/tg_vk)
 
-<font size="5">
 Бот позволяет обмениваться сообщениями ВК используя Telegram, имеется возможность пересылки сообщений, а так же выбора диалога.
-<p align="center"><img src ="assets/rsz_sunset.jpg" /></p>
+<p align="center"><img src ="assets/rsz_sunset (1).jpg" /></p>
 
 Поддерживаются различные вложения
 
@@ -13,9 +13,12 @@
 
 
 Список диалогов
-<p align="center"><img src ="assets/rsz_dialogs.jpg" /></p>
+<p align="center"><img src ="assets/rsz_dialogs (1).jpg" /></p>
 
 И поиск по диалогам
 
-<p align="center"><img src ="assets/rsz_search.jpg" /></p>
-</font>
+<p align="center"><img src ="assets/rsz_search (1).jpg" /></p>
+
+- [Установка и развёртывание](installation/README.md)
+- [Использование](usage/README.md)
+- [Канал в Telegram](https://t.me/tg_vk)
