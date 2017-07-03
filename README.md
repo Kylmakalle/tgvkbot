@@ -1,6 +1,6 @@
 # Общий функционал
 
-- [Установка и развёртывание](installation/README.md)
+- [Создание и развёртывание](installation/README.md)
 - [Использование](usage/README.md)
 - [Канал в Telegram](https://t.me/tg_vk)
 
@@ -19,6 +19,6 @@
 
 <p align="center"><img src ="assets/rsz_search (1).jpg" /></p>
 
-- [Установка и развёртывание](installation/README.md)
+- [Создание и развёртывание](installation/README.md)
 - [Использование](usage/README.md)
 - [Канал в Telegram](https://t.me/tg_vk)
