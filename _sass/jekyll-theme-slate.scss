@@ -372,7 +372,7 @@ Small Device Styles
 
 @media screen and (max-width: 992px) {
   img {
-    max-width: 90%;
+    max-width: 100%;
   }
 }
 
@@ -386,7 +386,7 @@ Small Device Styles
   }
 
   .inner {
-    min-width: 320px;
+    min-width: 300px;
     max-width: 480px;
   }
 
