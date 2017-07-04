@@ -611,21 +611,22 @@ def reply_text(message):
                 verifycode(code)
                 create_thread(message.from_user.id, code)
                 bot.send_message(message.from_user.id, 'Вход выполнен!').wait()
-                bot.send_message(message.from_user.id, '[Использование](https://asergey.me/tgvkbot/usage/)', parse_mode='Markdown').wait()
+                bot.send_message(message.from_user.id, '[Использование](https://asergey.me/tgvkbot/usage/)',
+                                 parse_mode='Markdown').wait()
             except:
                 bot.send_message(message.from_user.id, 'Неверная ссылка, попробуй ещё раз!').wait()
         else:
             bot.send_message(message.from_user.id, 'Вход уже выполнен!\n/stop для выхода.').wait()
-            return
-    if message.reply_to_message and message.reply_to_message.text == 'Поиск беседы 🔍':
-        search_users(message, message.text)
-        return
 
-    try:
-        vk_sender(message, send_text)
-    except Exception:
-        bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
-                     parse_mode='Markdown').wait()
+    elif message.reply_to_message and message.reply_to_message.text == 'Поиск беседы 🔍':
+        search_users(message, message.text)
+
+    else:
+        try:
+            vk_sender(message, send_text)
+        except Exception:
+            bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
+                         parse_mode='Markdown').wait()
         print('Error: {}'.format(traceback.format_exc()))
 
 
