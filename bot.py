@@ -611,21 +611,7 @@ def reply_text(message):
                 verifycode(code)
                 create_thread(message.from_user.id, code)
                 bot.send_message(message.from_user.id, 'Вход выполнен!').wait()
-                # ---------------- INSTRUCTIONS ---------------- #
-                bot.send_message(message.from_user.id, 'Бот позволяет получать и отвечать на текстовые сообщения'
-                                                       ' из ВКонтакте\nПример личного сообщения:').wait()
-                bot.send_message(message.from_user.id, '*Иван Петров:*\nПривет, я тут классный мессенджер нашёл,'
-                                                       ' попробуешь? telegram.org/download',
-                                 parse_mode='Markdown').wait()
-                bot.send_message(message.from_user.id, 'Для сообщений из групповых чатов будет указываться'
-                                                       ' чат после имени отправителя:').wait()
-                bot.send_message(message.from_user.id, '*Ник Невидов @ My English is perfect:*\n'
-                                                       'London is the capital of Great Britain',
-                                 parse_mode='Markdown').wait()
-                bot.send_message(message.from_user.id, 'Чтобы ответить, используй Reply на нужное сообщение.'
-                                                       ' (нет, на эти не сработает, нужно реальное)',
-                                 parse_mode='Markdown').wait()
-                # ---------------- INSTRUCTIONS ---------------- #
+                bot.send_message(message.from_user.id, '[Использование](https://asergey.me/tgvkbot/usage/)', parse_mode='Markdown').wait()
             except:
                 bot.send_message(message.from_user.id, 'Неверная ссылка, попробуй ещё раз!').wait()
         else:
