@@ -30,6 +30,7 @@ class VkPolling:
             except requests.exceptions.ReadTimeout:
                 print(traceback.format_exc())
                 timeout *= 2
+                print('Retrying VK Polling in {} seconds.'.format(timeout/10))
             for i in range(timeout):
                 if self._running:
                     time.sleep(0.1)
