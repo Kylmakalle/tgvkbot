@@ -9,6 +9,7 @@ import traceback
 import ujson
 import vk
 import wget
+import time
 from PIL import Image
 from telebot import types
 
@@ -16,8 +17,6 @@ import cherrypy
 
 from credentials import token, vk_app_id, bot_url, local_port
 from vk_messages import VkMessage, VkPolling
-
-logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
 
 vk_threads = {}
 
@@ -170,11 +169,13 @@ def callback_buttons(call):
 
 def create_thread(uid, vk_token):
     a = VkPolling()
-    t = threading.Thread(name='vk' + str(uid), target=a.run, args=(VkMessage(vk_token), bot, uid,))
+    longpoller = VkMessage(vk_token)
+    t = threading.Thread(name='vk' + str(uid), target=a.run, args=(longpoller, bot, uid,))
     t.setDaemon(True)
     t.start()
     vk_threads[str(uid)] = a
     vk_tokens.set(str(uid), vk_token)
+    vk.API(longpoller.session).account.setOffline()
 
 
 def check_thread(uid):
@@ -184,11 +185,22 @@ def check_thread(uid):
     return True
 
 
-# Creating VkPolling threads and dialogs info after bot reboot using existing tokens
-for uid in vk_tokens.scan_iter():
-    if check_thread(uid.decode("utf-8")):
-        create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
-        request_user_dialogs(VkMessage(vk_tokens.get(uid.decode("utf-8"))).session, uid.decode("utf-8"))
+# Creating VkPolling threads and dialogs info after bot's reboot/exception using existing tokens
+def thread_supervisor():
+    while True:
+        for uid in vk_tokens.scan_iter():
+            if check_thread(uid.decode("utf-8")):
+                try:
+                    create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
+                    request_user_dialogs(VkMessage(vk_tokens.get(uid.decode("utf-8"))).session, uid.decode("utf-8"))
+                except requests.exceptions.ReadTimeout as e:
+                    time.sleep(10)
+        time.sleep(120)
+
+
+supervisor = threading.Thread(name='supervisor', target=thread_supervisor)
+supervisor.setDaemon(True)
+supervisor.start()
 
 
 def stop_thread(message):
@@ -627,7 +639,7 @@ def reply_text(message):
         except Exception:
             bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
                          parse_mode='Markdown').wait()
-        print('Error: {}'.format(traceback.format_exc()))
+            print('Error: {}'.format(traceback.format_exc()))
 
 
 # bot.polling(none_stop=True)
@@ -643,6 +655,7 @@ class WebhookServer(object):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
     bot.remove_webhook()
     bot.set_webhook('https://{}/{}/'.format(bot_url, token))
     cherrypy.config.update(

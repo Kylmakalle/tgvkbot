@@ -1,8 +1,8 @@
+import logging
 import os
 import redis
 import requests
 import time
-import traceback
 import vk
 import wget
 
@@ -11,6 +11,8 @@ vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
 
 
 class VkPolling:
+    logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
+
     def __init__(self):
         self._running = True
 
@@ -19,14 +21,16 @@ class VkPolling:
 
     def run(self, vk_user, bot, chat_id):
         while self._running:
-            updates = []
+            timeout = 50
             try:
                 updates = vk_user.get_new_messages()
+                if updates:
+                    handle_updates(vk_user, bot, chat_id, updates)
             except requests.exceptions.ReadTimeout as e:
-                print('Error: {}'.format(e))
-            if updates:
-                handle_updates(vk_user, bot, chat_id, updates)
-            for i in range(60):
+                print(e)
+                timeout *= 2
+                print('Retry VK Polling in {} sec'.format(timeout))
+            for i in range(timeout):
                 if self._running:
                     time.sleep(0.1)
                 else:
