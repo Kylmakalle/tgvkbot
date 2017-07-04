@@ -4,6 +4,7 @@ import redis
 import requests
 import time
 import vk
+import traceback
 import wget
 
 tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
@@ -26,10 +27,9 @@ class VkPolling:
                 updates = vk_user.get_new_messages()
                 if updates:
                     handle_updates(vk_user, bot, chat_id, updates)
-            except requests.exceptions.ReadTimeout as e:
-                print(e)
+            except requests.exceptions.ReadTimeout:
+                print(traceback.format_exc())
                 timeout *= 2
-                print('Retry VK Polling in {} sec'.format(timeout))
             for i in range(timeout):
                 if self._running:
                     time.sleep(0.1)
