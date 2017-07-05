@@ -581,7 +581,7 @@ def reply_sticker(message):
     except Exception:
         bot.reply_to(message, '*Произошла неизвестная ошибка при отправке*',
                      parse_mode='Markdown').wait()  # TODO?: Bugreport system
-        print('Error: {}'.format(traceback.format_exc()))
+        logging.exception('Error: {}'.format(traceback.format_exc()))
 
 
 @bot.message_handler(content_types=['photo'])
@@ -609,7 +609,7 @@ def reply_contact(message):
     except Exception:
         bot.reply_to(message, '*Произошла неизвестная ошибка при отправке*',
                      parse_mode='Markdown').wait()
-        print('Error: {}'.format(traceback.format_exc()))
+        logging.exception('Error: {}'.format(traceback.format_exc()))
 
 
 @bot.message_handler(content_types=['text'])
@@ -620,9 +620,10 @@ def reply_text(message):
         code = extract_unique_code(m.group(0))
         if check_thread(message.from_user.id):
             try:
-                verifycode(code)
+                user = verifycode(code)
                 create_thread(message.from_user.id, code)
-                bot.send_message(message.from_user.id, 'Вход выполнен!').wait()
+                bot.send_message(message.from_user.id,
+                                 'Вход выполнен в аккаунт {} {}!'.format(user['first_name'], user['last_name'])).wait()
                 bot.send_message(message.from_user.id, '[Использование](https://asergey.me/tgvkbot/usage/)',
                                  parse_mode='Markdown').wait()
             except:
@@ -639,7 +640,7 @@ def reply_text(message):
         except Exception:
             bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
                          parse_mode='Markdown').wait()
-            print('Error: {}'.format(traceback.format_exc()))
+            logging.exception('Error: {}'.format(traceback.format_exc()))
 
 
 # bot.polling(none_stop=True)
@@ -659,5 +660,6 @@ if __name__ == '__main__':
     bot.remove_webhook()
     bot.set_webhook('https://{}/{}/'.format(bot_url, token))
     cherrypy.config.update(
-        {'server.socket_host': '127.0.0.1', 'server.socket_port': local_port, 'engine.autoreload.on': False})
+        {'server.socket_host': '127.0.0.1', 'server.socket_port': local_port, 'engine.autoreload.on': False,
+         'log.screen': False})
     cherrypy.quickstart(WebhookServer(), '/', {'/': {}})

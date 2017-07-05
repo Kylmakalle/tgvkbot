@@ -4,16 +4,15 @@ import redis
 import requests
 import time
 import vk
-import traceback
+from vk.exceptions import VkAPIError
 import wget
 
+logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
 tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
 vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
 
 
 class VkPolling:
-    logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
-
     def __init__(self):
         self._running = True
 
@@ -28,9 +27,8 @@ class VkPolling:
                 if updates:
                     handle_updates(vk_user, bot, chat_id, updates)
             except requests.exceptions.ReadTimeout:
-                print(traceback.format_exc())
                 timeout *= 2
-                print('Retrying VK Polling in {} seconds.'.format(timeout/10))
+                logging.warning('Retrying VK Polling in {} seconds.'.format(int(timeout / 10)))
             for i in range(timeout):
                 if self._running:
                     time.sleep(0.1)
@@ -284,7 +282,15 @@ class VkMessage:
     def get_new_messages(self):
 
         api = vk.API(self.session)
-        new = api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
+        try:
+            new = api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
+        except VkAPIError.code == 10:
+            timeout = 3
+            logging.warning('Retrying getLongPollHistory in {} seconds'.format(timeout))
+            time.sleep(timeout)
+            self.ts, self.pts = get_tses(self.session)
+            new = api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
+
         msgs = new['messages']
         self.pts = new["new_pts"]
         count = msgs[0]
