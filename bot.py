@@ -30,6 +30,7 @@ vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
 currentchat = {}
 
 bot = telebot.AsyncTeleBot(token)
+bot.remove_webhook()
 
 link = 'https://oauth.vk.com/authorize?client_id={}&' \
        'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video' \

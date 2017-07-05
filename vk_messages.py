@@ -4,7 +4,6 @@ import redis
 import requests
 import time
 import vk
-from vk.exceptions import VkAPIError
 import wget
 
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
@@ -284,7 +283,7 @@ class VkMessage:
         api = vk.API(self.session)
         try:
             new = api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
-        except VkAPIError.code == 10:
+        except:
             timeout = 3
             logging.warning('Retrying getLongPollHistory in {} seconds'.format(timeout))
             time.sleep(timeout)
