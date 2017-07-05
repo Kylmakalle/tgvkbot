@@ -582,7 +582,7 @@ def reply_sticker(message):
     except Exception:
         bot.reply_to(message, '*Произошла неизвестная ошибка при отправке*',
                      parse_mode='Markdown').wait()  # TODO?: Bugreport system
-        logging.exception('Error: {}'.format(traceback.format_exc()))
+        print('Error: {}'.format(traceback.format_exc()))
 
 
 @bot.message_handler(content_types=['photo'])
@@ -610,7 +610,7 @@ def reply_contact(message):
     except Exception:
         bot.reply_to(message, '*Произошла неизвестная ошибка при отправке*',
                      parse_mode='Markdown').wait()
-        logging.exception('Error: {}'.format(traceback.format_exc()))
+        print('Error: {}'.format(traceback.format_exc()))
 
 
 @bot.message_handler(content_types=['text'])
@@ -641,7 +641,7 @@ def reply_text(message):
         except Exception:
             bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
                          parse_mode='Markdown').wait()
-            logging.exception('Error: {}'.format(traceback.format_exc()))
+            print('Error: {}'.format(traceback.format_exc()))
 
 
 # bot.polling(none_stop=True)

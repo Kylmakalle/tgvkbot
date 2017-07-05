@@ -27,7 +27,7 @@ class VkPolling:
                     handle_updates(vk_user, bot, chat_id, updates)
             except requests.exceptions.ReadTimeout:
                 timeout *= 2
-                logging.warning('Retrying VK Polling in {} seconds.'.format(int(timeout / 10)))
+                print('Retrying VK Polling in {} seconds.'.format(int(timeout / 10)))
             for i in range(timeout):
                 if self._running:
                     time.sleep(0.1)
@@ -283,9 +283,9 @@ class VkMessage:
         api = vk.API(self.session)
         try:
             new = api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
-        except:
+        except vk.api.VkAPIError:
             timeout = 3
-            logging.warning('Retrying getLongPollHistory in {} seconds'.format(timeout))
+            print('Retrying getLongPollHistory in {} seconds'.format(timeout))
             time.sleep(timeout)
             self.ts, self.pts = get_tses(self.session)
             new = api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
