@@ -36,7 +36,12 @@ class VkPolling:
 
 
 def handle_messages(m, vk_user, bot, chat_id, mainmessage=None):
-    user = vk.API(vk_user.session).users.get(user_ids=m["uid"], fields=[])[0]
+    if m['uid'] > 0:
+        user = vk.API(vk_user.session).users.get(user_ids=m["uid"], fields=[])[0]
+    else:
+        group = vk.API(vk_user.session).groups.getById(group_ids=str(m['uid'])[1:])[0]
+        user = {'first_name': group['name'], 'last_name': None}
+
     if 'body' in m and not 'attachment' in m and not 'geo' in m and not 'fwd_messages' in m:
         data = add_user_info(m, user["first_name"], user["last_name"])[:-1] + add_reply_info(m)
         bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
@@ -244,15 +249,29 @@ def add_reply_info(m):
 
 def add_user_info(m, first_name, last_name):
     if 'body' in m and m['body']:
-        if 'chat_id' in m:
-            return '<b>{} {} @ {}:</b>\n{}\n'.format(first_name, last_name, m['title'], m['body'].replace('<br>', '\n'))
+        if last_name:
+            if 'chat_id' in m:
+                return '<b>{} {} @ {}:</b>\n{}\n'.format(first_name, last_name, m['title'],
+                                                         m['body'].replace('<br>', '\n'))
+            else:
+                return '<b>{} {}:</b>\n{}\n'.format(first_name, last_name, m['body'].replace('<br>', '\n'))
         else:
-            return '<b>{} {}:</b>\n{}\n'.format(first_name, last_name, m['body'].replace('<br>', '\n'))
+            if 'chat_id' in m:
+                return '<b>{} @ {}:</b>\n{}\n'.format(first_name, m['title'],
+                                                      m['body'].replace('<br>', '\n'))
+            else:
+                return '<b>{}:</b>\n{}\n'.format(first_name, m['body'].replace('<br>', '\n'))
     else:
-        if 'chat_id' in m:
-            return '<b>{} {} @ {}:</b>\n'.format(first_name, last_name, m['title'])
+        if last_name:
+            if 'chat_id' in m:
+                return '<b>{} {} @ {}:</b>\n'.format(first_name, last_name, m['title'])
+            else:
+                return '<b>{} {}:</b>\n'.format(first_name, last_name)
         else:
-            return '<b>{} {}:</b>\n'.format(first_name, last_name)
+            if 'chat_id' in m:
+                return '<b>{} @ {}:</b>\n'.format(first_name, m['title'])
+            else:
+                return '<b>{}:</b>\n'.format(first_name)
 
 
 def check_notification(value):

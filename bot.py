@@ -70,6 +70,8 @@ def replace_shields(text):
 def request_user_dialogs(session, userid):
     order = []
     users_ids = []
+    group_ids = []
+    positive_group_ids = []
     dialogs = vk.API(session).messages.getDialogs(count=200)
     for chat in dialogs[1:]:
         if 'chat_id' in chat:
@@ -80,14 +82,28 @@ def request_user_dialogs(session, userid):
         elif chat['uid'] > 0:
             order.append({'title': None, 'id': chat['uid']})
             users_ids.append(chat['uid'])
+        elif chat['uid'] < 0:
+            order.append({'title': None, 'id': chat['uid']})
+            group_ids.append(chat['uid'])
+
+    for g in group_ids:
+        positive_group_ids.append(str(g)[1:])
+
     users = vk.API(session).users.get(user_ids=users_ids, fields=['first_name', 'last_name', 'uid'])
+    groups = vk.API(session).groups.getById(group_ids=positive_group_ids, fields=[])
     for output in order:
         if output['title'] == ' ... ' or not output['title']:
-            for x in users:
-                if x['uid'] == output['id']:
-                    current_user = x
-                    break
-            output['title'] = '{} {}'.format(current_user['first_name'], current_user['last_name'])
+            if output['id'] > 0:
+                for x in users:
+                    if x['uid'] == output['id']:
+                        output['title'] = '{} {}'.format(x['first_name'], x['last_name'])
+                        break
+
+            else:
+                for f in groups:
+                    if str(f['gid']) == str(output['id'])[1:]:
+                        output['title'] = '{}'.format(f['name'])
+                        break
     for button in range(len(order)):
         order[button] = types.InlineKeyboardButton(order[button]['title'], callback_data=str(order[button]['id']))
     rows = [order[x:x + 2] for x in range(0, len(order), 2)]
@@ -139,8 +155,13 @@ def search_users(message, text):
 def callback_buttons(call):
     if call.message:
         if 'page' in call.data:
+            try:
+                create_markup(call.message, call.from_user.id, int(call.data.split('page')[1]), True)
+            except:
+                session = VkMessage(vk_tokens.get(str(call.from_user.id))).session
+                request_user_dialogs(session, call.from_user.id)
+                create_markup(call.message, call.from_user.id, int(call.data.split('page')[1]), True)
             bot.answer_callback_query(call.id).wait()
-            create_markup(call.message, call.from_user.id, int(call.data.split('page')[1]), True)
         elif 'search' in call.data:
             markup = types.ForceReply(selective=False)
             bot.answer_callback_query(call.id, 'Поиск беседы 🔍').wait()
@@ -157,15 +178,20 @@ def callback_buttons(call):
                              '<i>Вы в беседе {}</i>'.format(chat['title']),
                              parse_mode='HTML').wait()
             currentchat[str(call.from_user.id)] = call.data
-        elif call.data.isdigit():
+        elif call.data.lstrip('-').isdigit():
             session = VkMessage(vk_tokens.get(str(call.from_user.id))).session
-            user = vk.API(session).users.get(user_ids=call.data, fields=[])[0]
+            if '-' in call.data:
+                user = vk.API(session).groups.getById(group_id=call.data.lstrip('-'), fields=[])[0]
+                user = {'first_name': user['name'], 'last_name': ''}
+            else:
+                user = vk.API(session).users.get(user_ids=call.data, fields=[])[0]
             bot.answer_callback_query(call.id,
                                       'Вы в чате с {} {}'.format(user['first_name'], user['last_name'])).wait()
             bot.send_message(call.from_user.id,
                              '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
                              parse_mode='HTML').wait()
-            currentchat[str(call.from_user.id)] = call.data
+            currentchat[str(call.from_user.id)] = {'title': user['first_name'] + ' ' + user['last_name'],
+                                                   'id': call.data}
 
 
 def create_thread(uid, vk_token):
@@ -193,7 +219,6 @@ def thread_supervisor():
             if check_thread(uid.decode("utf-8")):
                 try:
                     create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
-                    request_user_dialogs(VkMessage(vk_tokens.get(uid.decode("utf-8"))).session, uid.decode("utf-8"))
                 except requests.exceptions.ReadTimeout as e:
                     time.sleep(10)
         time.sleep(120)
@@ -238,21 +263,17 @@ def info_extractor(info):
 def chat_command(message):
     if logged(message):
         if str(message.from_user.id) in currentchat:
-            if 'group' in currentchat[str(message.from_user.id)]:
-                session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-                chat = vk.API(session).messages.getChat(
-                    chat_id=currentchat[str(message.from_user.id)].split('group')[1],
-                    fields=[])
+            if 'group' in currentchat[str(message.from_user.id)]['id']:
+                chat = currentchat[str(message.from_user.id)]
                 if chat['title'].replace('\\', ''):
                     chat['title'] = chat['title'].replace('\\', '')
                 bot.send_message(message.from_user.id,
                                  '<i>Вы в беседе {}</i>'.format(chat['title']),
                                  parse_mode='HTML').wait()
             else:
-                session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-                user = vk.API(session).users.get(user_ids=currentchat[str(message.from_user.id)], fields=[])[0]
+                chat = currentchat[str(message.from_user.id)]
                 bot.send_message(message.from_user.id,
-                                 '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
+                                 '<i>Вы в чате с {}</i>'.format(chat['title']),
                                  parse_mode='HTML').wait()
         else:
             bot.send_message(message.from_user.id,
@@ -368,12 +389,12 @@ def vk_sender(message, method):
 
         elif str(message.from_user.id) in currentchat:
             info = []
-            if 'group' in currentchat[str(message.from_user.id)]:
+            if 'group' in currentchat[str(message.from_user.id)]['id']:
                 info.append('0')
-                info.append(currentchat[str(message.from_user.id)].split('group')[1])
+                info.append(currentchat[str(message.from_user.id)]['id'].split('group')[1])
                 info.append('1')
             else:
-                info.append(currentchat[str(message.from_user.id)])
+                info.append(currentchat[str(message.from_user.id)]['id'])
                 info.append('0')
                 info.append('0')
             form_request(message, method, info)
