@@ -418,9 +418,9 @@ def send_text(message, userid, group, forward_messages=None):
 def send_doc(message, userid, group, forward_messages=None):
     filetype = message.content_type
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-    file = wget.download(
-        FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
-    if filetype == 'document':
+    if filetype == 'document' and 'video' not in message.document.mime_type:
+        file = wget.download(
+            FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
         openedfile = open(file, 'rb')
         files = {'file': openedfile}
         fileonserver = ujson.loads(requests.post(vk.API(session).docs.getUploadServer()['upload_url'],
@@ -432,6 +432,8 @@ def send_doc(message, userid, group, forward_messages=None):
         os.remove(file)
 
     elif filetype == 'voice':
+        file = wget.download(
+            FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
         openedfile = open(file, 'rb')
         files = {'file': openedfile}
         fileonserver = ujson.loads(
@@ -442,7 +444,13 @@ def send_doc(message, userid, group, forward_messages=None):
         openedfile.close()
         os.remove(file)
 
+    elif filetype == 'document' and 'video' in message.document.mime_type:
+        vk_sender(message, send_video)
+        return
+
     else:  # filetype == 'audio':
+        file = wget.download(
+            FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
         newfile = file.split('.')[0] + '.aac'
         os.rename(file, newfile)
         openedfile = open(newfile, 'rb')
