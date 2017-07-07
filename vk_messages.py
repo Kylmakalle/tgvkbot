@@ -4,6 +4,7 @@ import redis
 import requests
 import time
 import vk
+import ujson
 import wget
 
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
@@ -20,13 +21,13 @@ class VkPolling:
 
     def run(self, vk_user, bot, chat_id):
         while self._running:
-            timeout = 50
+            timeout = 30
             try:
                 updates = vk_user.get_new_messages()
                 if updates:
                     handle_updates(vk_user, bot, chat_id, updates)
-            except requests.exceptions.ReadTimeout:
-                timeout *= 2
+            except requests.exceptions.ReadTimeout as e:
+                print('Error', e)
                 print('Retrying VK Polling in {} seconds.'.format(int(timeout / 10)))
             for i in range(timeout):
                 if self._running:
@@ -301,13 +302,15 @@ class VkMessage:
 
         api = vk.API(self.session)
         try:
-            new = api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
+            ts_pts = ujson.dumps({"ts": self.ts, "pts": self.pts})
+            new = api.execute(code='return API.messages.getLongPollHistory({});'.format(ts_pts))  # api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
         except vk.api.VkAPIError:
             timeout = 3
             print('Retrying getLongPollHistory in {} seconds'.format(timeout))
             time.sleep(timeout)
             self.ts, self.pts = get_tses(self.session)
-            new = api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
+            ts_pts = ujson.dumps({"ts": self.ts, "pts": self.pts})
+            new = api.execute(code='return API.messages.getLongPollHistory({});'.format(ts_pts))
 
         msgs = new['messages']
         self.pts = new["new_pts"]
