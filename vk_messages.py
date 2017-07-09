@@ -27,8 +27,7 @@ class VkPolling:
                 if updates:
                     handle_updates(vk_user, bot, chat_id, updates)
             except requests.exceptions.ReadTimeout as e:
-                print('Error', e)
-                print('Retrying VK Polling in {} seconds.'.format(int(timeout / 10)))
+                logging.warning('Retrying VK Polling in {} seconds.'.format(int(timeout / 10)))
             for i in range(timeout):
                 if self._running:
                     time.sleep(0.1)
@@ -303,10 +302,10 @@ class VkMessage:
         api = vk.API(self.session)
         try:
             ts_pts = ujson.dumps({"ts": self.ts, "pts": self.pts})
-            new = api.execute(code='return API.messages.getLongPollHistory({});'.format(ts_pts))  # api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
+            new = api.execute(code='return API.messages.getLongPollHistory({});'.format(ts_pts))
         except vk.api.VkAPIError:
             timeout = 3
-            print('Retrying getLongPollHistory in {} seconds'.format(timeout))
+            logging.warning('Retrying getLongPollHistory in {} seconds'.format(timeout))
             time.sleep(timeout)
             self.ts, self.pts = get_tses(self.session)
             ts_pts = ujson.dumps({"ts": self.ts, "pts": self.pts})
