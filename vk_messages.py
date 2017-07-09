@@ -1,11 +1,16 @@
+import logging
 import os
 import redis
 import requests
 import time
 import vk
+import ujson
 import wget
 
+
+logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
 vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
+
 
 
 class VkPolling:
@@ -17,14 +22,15 @@ class VkPolling:
 
     def run(self, vk_user, bot, chat_id):
         while self._running:
-            updates = []
+            timeout = 30
             try:
                 updates = vk_user.get_new_messages()
-            except requests.exceptions.ReadTimeout as e:
-                print('Error: {}'.format(e))
-            if updates:
-                handle_updates(vk_user, bot, chat_id, updates)
-            for i in range(60):
+                if updates:
+                    handle_updates(vk_user, bot, chat_id, updates)
+            except requests.exceptions.ReadTimeout:
+                logging.warning('Retrying VK Polling.')
+                timeout = 0
+            for i in range(timeout):
                 if self._running:
                     time.sleep(0.1)
                 else:
@@ -32,7 +38,12 @@ class VkPolling:
 
 
 def handle_messages(m, vk_user, bot, chat_id, mainmessage=None):
-    user = vk.API(vk_user.session).users.get(user_ids=m["uid"], fields=[])[0]
+    if m['uid'] > 0:
+        user = vk.API(vk_user.session).users.get(user_ids=m["uid"], fields=[])[0]
+    else:
+        group = vk.API(vk_user.session).groups.getById(group_ids=str(m['uid'])[1:])[0]
+        user = {'first_name': group['name'], 'last_name': None}
+
     if 'body' in m and not 'attachment' in m and not 'geo' in m and not 'fwd_messages' in m:
         data = add_user_info(m, user["first_name"], user["last_name"])[:-1] + add_reply_info(m)
         bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
@@ -240,15 +251,29 @@ def add_reply_info(m):
 
 def add_user_info(m, first_name, last_name):
     if 'body' in m and m['body']:
-        if 'chat_id' in m:
-            return '<b>{} {} @ {}:</b>\n{}\n'.format(first_name, last_name, m['title'], m['body'].replace('<br>', '\n'))
+        if last_name:
+            if 'chat_id' in m:
+                return '<b>{} {} @ {}:</b>\n{}\n'.format(first_name, last_name, m['title'],
+                                                         m['body'].replace('<br>', '\n'))
+            else:
+                return '<b>{} {}:</b>\n{}\n'.format(first_name, last_name, m['body'].replace('<br>', '\n'))
         else:
-            return '<b>{} {}:</b>\n{}\n'.format(first_name, last_name, m['body'].replace('<br>', '\n'))
+            if 'chat_id' in m:
+                return '<b>{} @ {}:</b>\n{}\n'.format(first_name, m['title'],
+                                                      m['body'].replace('<br>', '\n'))
+            else:
+                return '<b>{}:</b>\n{}\n'.format(first_name, m['body'].replace('<br>', '\n'))
     else:
-        if 'chat_id' in m:
-            return '<b>{} {} @ {}:</b>\n'.format(first_name, last_name, m['title'])
+        if last_name:
+            if 'chat_id' in m:
+                return '<b>{} {} @ {}:</b>\n'.format(first_name, last_name, m['title'])
+            else:
+                return '<b>{} {}:</b>\n'.format(first_name, last_name)
         else:
-            return '<b>{} {}:</b>\n'.format(first_name, last_name)
+            if 'chat_id' in m:
+                return '<b>{} @ {}:</b>\n'.format(first_name, m['title'])
+            else:
+                return '<b>{}:</b>\n'.format(first_name)
 
 
 def check_notification(value):
@@ -277,7 +302,17 @@ class VkMessage:
     def get_new_messages(self):
 
         api = vk.API(self.session)
-        new = api.messages.getLongPollHistory(ts=self.ts, pts=self.pts)
+        try:
+            ts_pts = ujson.dumps({"ts": self.ts, "pts": self.pts})
+            new = api.execute(code='return API.messages.getLongPollHistory({});'.format(ts_pts))
+        except vk.api.VkAPIError:
+            timeout = 3
+            logging.warning('Retrying getLongPollHistory in {} seconds'.format(timeout))
+            time.sleep(timeout)
+            self.ts, self.pts = get_tses(self.session)
+            ts_pts = ujson.dumps({"ts": self.ts, "pts": self.pts})
+            new = api.execute(code='return API.messages.getLongPollHistory({});'.format(ts_pts))
+
         msgs = new['messages']
         self.pts = new["new_pts"]
         count = msgs[0]

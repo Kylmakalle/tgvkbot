@@ -9,13 +9,12 @@ import traceback
 import ujson
 import vk
 import wget
+import time
 from PIL import Image
 from telebot import types
 
 from credentials import token, vk_app_id
 from vk_messages import VkMessage, VkPolling
-
-logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
 
 vk_threads = {}
 
@@ -28,6 +27,7 @@ vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
 currentchat = {}
 
 bot = telebot.AsyncTeleBot(token)
+bot.remove_webhook()
 
 link = 'https://oauth.vk.com/authorize?client_id={}&' \
        'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video' \
@@ -67,6 +67,8 @@ def replace_shields(text):
 def request_user_dialogs(session, userid):
     order = []
     users_ids = []
+    group_ids = []
+    positive_group_ids = []
     dialogs = vk.API(session).messages.getDialogs(count=200)
     for chat in dialogs[1:]:
         if 'chat_id' in chat:
@@ -77,14 +79,28 @@ def request_user_dialogs(session, userid):
         elif chat['uid'] > 0:
             order.append({'title': None, 'id': chat['uid']})
             users_ids.append(chat['uid'])
+        elif chat['uid'] < 0:
+            order.append({'title': None, 'id': chat['uid']})
+            group_ids.append(chat['uid'])
+
+    for g in group_ids:
+        positive_group_ids.append(str(g)[1:])
+
     users = vk.API(session).users.get(user_ids=users_ids, fields=['first_name', 'last_name', 'uid'])
+    groups = vk.API(session).groups.getById(group_ids=positive_group_ids, fields=[])
     for output in order:
         if output['title'] == ' ... ' or not output['title']:
-            for x in users:
-                if x['uid'] == output['id']:
-                    current_user = x
-                    break
-            output['title'] = '{} {}'.format(current_user['first_name'], current_user['last_name'])
+            if output['id'] > 0:
+                for x in users:
+                    if x['uid'] == output['id']:
+                        output['title'] = '{} {}'.format(x['first_name'], x['last_name'])
+                        break
+
+            else:
+                for f in groups:
+                    if str(f['gid']) == str(output['id'])[1:]:
+                        output['title'] = '{}'.format(f['name'])
+                        break
     for button in range(len(order)):
         order[button] = types.InlineKeyboardButton(order[button]['title'], callback_data=str(order[button]['id']))
     rows = [order[x:x + 2] for x in range(0, len(order), 2)]
@@ -136,8 +152,13 @@ def search_users(message, text):
 def callback_buttons(call):
     if call.message:
         if 'page' in call.data:
+            try:
+                create_markup(call.message, call.from_user.id, int(call.data.split('page')[1]), True)
+            except:
+                session = VkMessage(vk_tokens.get(str(call.from_user.id))).session
+                request_user_dialogs(session, call.from_user.id)
+                create_markup(call.message, call.from_user.id, int(call.data.split('page')[1]), True)
             bot.answer_callback_query(call.id).wait()
-            create_markup(call.message, call.from_user.id, int(call.data.split('page')[1]), True)
         elif 'search' in call.data:
             markup = types.ForceReply(selective=False)
             bot.answer_callback_query(call.id, 'Поиск беседы 🔍').wait()
@@ -154,24 +175,31 @@ def callback_buttons(call):
                              '<i>Вы в беседе {}</i>'.format(chat['title']),
                              parse_mode='HTML').wait()
             currentchat[str(call.from_user.id)] = call.data
-        elif call.data.isdigit():
+        elif call.data.lstrip('-').isdigit():
             session = VkMessage(vk_tokens.get(str(call.from_user.id))).session
-            user = vk.API(session).users.get(user_ids=call.data, fields=[])[0]
+            if '-' in call.data:
+                user = vk.API(session).groups.getById(group_id=call.data.lstrip('-'), fields=[])[0]
+                user = {'first_name': user['name'], 'last_name': ''}
+            else:
+                user = vk.API(session).users.get(user_ids=call.data, fields=[])[0]
             bot.answer_callback_query(call.id,
                                       'Вы в чате с {} {}'.format(user['first_name'], user['last_name'])).wait()
             bot.send_message(call.from_user.id,
                              '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
                              parse_mode='HTML').wait()
-            currentchat[str(call.from_user.id)] = call.data
+            currentchat[str(call.from_user.id)] = {'title': user['first_name'] + ' ' + user['last_name'],
+                                                   'id': call.data}
 
 
 def create_thread(uid, vk_token):
     a = VkPolling()
-    t = threading.Thread(name='vk' + str(uid), target=a.run, args=(VkMessage(vk_token), bot, uid,))
+    longpoller = VkMessage(vk_token)
+    t = threading.Thread(name='vk' + str(uid), target=a.run, args=(longpoller, bot, uid,))
     t.setDaemon(True)
     t.start()
     vk_threads[str(uid)] = a
     vk_tokens.set(str(uid), vk_token)
+    vk.API(longpoller.session).account.setOffline()
 
 
 def check_thread(uid):
@@ -181,11 +209,29 @@ def check_thread(uid):
     return True
 
 
-# Creating VkPolling threads and dialogs info after bot reboot using existing tokens
-for uid in vk_tokens.scan_iter():
-    if check_thread(uid.decode("utf-8")):
-        create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
-        request_user_dialogs(VkMessage(vk_tokens.get(uid.decode("utf-8"))).session, uid.decode("utf-8"))
+# Creating VkPolling threads and dialogs info after bot's reboot/exception using existing tokens
+def thread_supervisor():
+    while True:
+        for uid in vk_tokens.scan_iter():
+            tries = 0
+            while check_thread(uid.decode("utf-8")):
+                if tries < 6:
+                    try:
+                        create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
+                    except:
+                        tries = tries + 1
+                else:
+                    mark = types.InlineKeyboardMarkup()
+                    login = types.InlineKeyboardButton('ВХОД', url=link)
+                    mark.add(login)
+                    bot.send_message(uid.decode("utf-8"), '<b>Непредвиденная ошибка, требуется повторный логин ВК!</b>',
+                                     parse_mode='HTML', reply_markup=mark)
+        time.sleep(60)
+
+
+supervisor = threading.Thread(name='supervisor', target=thread_supervisor)
+supervisor.setDaemon(True)
+supervisor.start()
 
 
 def stop_thread(message):
@@ -222,21 +268,17 @@ def info_extractor(info):
 def chat_command(message):
     if logged(message):
         if str(message.from_user.id) in currentchat:
-            if 'group' in currentchat[str(message.from_user.id)]:
-                session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-                chat = vk.API(session).messages.getChat(
-                    chat_id=currentchat[str(message.from_user.id)].split('group')[1],
-                    fields=[])
+            if 'group' in currentchat[str(message.from_user.id)]['id']:
+                chat = currentchat[str(message.from_user.id)]
                 if chat['title'].replace('\\', ''):
                     chat['title'] = chat['title'].replace('\\', '')
                 bot.send_message(message.from_user.id,
                                  '<i>Вы в беседе {}</i>'.format(chat['title']),
                                  parse_mode='HTML').wait()
             else:
-                session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-                user = vk.API(session).users.get(user_ids=currentchat[str(message.from_user.id)], fields=[])[0]
+                chat = currentchat[str(message.from_user.id)]
                 bot.send_message(message.from_user.id,
-                                 '<i>Вы в чате с {} {}</i>'.format(user['first_name'], user['last_name']),
+                                 '<i>Вы в чате с {}</i>'.format(chat['title']),
                                  parse_mode='HTML').wait()
         else:
             bot.send_message(message.from_user.id,
@@ -352,12 +394,12 @@ def vk_sender(message, method):
 
         elif str(message.from_user.id) in currentchat:
             info = []
-            if 'group' in currentchat[str(message.from_user.id)]:
+            if 'group' in currentchat[str(message.from_user.id)]['id']:
                 info.append('0')
-                info.append(currentchat[str(message.from_user.id)].split('group')[1])
+                info.append(currentchat[str(message.from_user.id)]['id'].split('group')[1])
                 info.append('1')
             else:
-                info.append(currentchat[str(message.from_user.id)])
+                info.append(currentchat[str(message.from_user.id)]['id'])
                 info.append('0')
                 info.append('0')
             form_request(message, method, info)
@@ -381,9 +423,9 @@ def send_text(message, userid, group, forward_messages=None):
 def send_doc(message, userid, group, forward_messages=None):
     filetype = message.content_type
     session = VkMessage(vk_tokens.get(str(message.from_user.id))).session
-    file = wget.download(
-        FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
-    if filetype == 'document':
+    if filetype == 'document' and 'video' not in message.document.mime_type:
+        file = wget.download(
+            FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
         openedfile = open(file, 'rb')
         files = {'file': openedfile}
         fileonserver = ujson.loads(requests.post(vk.API(session).docs.getUploadServer()['upload_url'],
@@ -395,6 +437,8 @@ def send_doc(message, userid, group, forward_messages=None):
         os.remove(file)
 
     elif filetype == 'voice':
+        file = wget.download(
+            FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
         openedfile = open(file, 'rb')
         files = {'file': openedfile}
         fileonserver = ujson.loads(
@@ -405,7 +449,13 @@ def send_doc(message, userid, group, forward_messages=None):
         openedfile.close()
         os.remove(file)
 
+    elif filetype == 'document' and 'video' in message.document.mime_type:
+        vk_sender(message, send_video)
+        return
+
     else:  # filetype == 'audio':
+        file = wget.download(
+            FILE_URL.format(token, bot.get_file(getattr(message, filetype).file_id).wait().file_path))
         newfile = file.split('.')[0] + '.aac'
         os.rename(file, newfile)
         openedfile = open(newfile, 'rb')
@@ -605,9 +655,11 @@ def reply_text(message):
         code = extract_unique_code(m.group(0))
         if check_thread(message.from_user.id):
             try:
-                verifycode(code)
+                user = verifycode(code)
                 create_thread(message.from_user.id, code)
-                bot.send_message(message.from_user.id, 'Вход выполнен!').wait()
+                bot.send_message(message.from_user.id,
+                                 'Вход выполнен в аккаунт {} {}!'.format(user['first_name'], user['last_name'])).wait()
+
                 bot.send_message(message.from_user.id, '[Использование](https://asergey.me/tgvkbot/usage/)',
                                  parse_mode='Markdown').wait()
             except:
@@ -624,7 +676,24 @@ def reply_text(message):
         except Exception:
             bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
                          parse_mode='Markdown').wait()
-        print('Error: {}'.format(traceback.format_exc()))
-
 
 bot.polling(none_stop=True)
+"""class WebhookServer(object):
+    # index равнозначно /, т.к. отсутствию части после ip-адреса (грубо говоря)
+    @cherrypy.expose
+    def index(self):
+        length = int(cherrypy.request.headers['content-length'])
+        json_string = cherrypy.request.body.read(length).decode("utf-8")
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return ''
+
+
+if __name__ == '__main__':
+    logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
+    bot.remove_webhook()
+    bot.set_webhook('https://{}/{}/'.format(bot_url, token))
+    cherrypy.config.update(
+        {'server.socket_host': '127.0.0.1', 'server.socket_port': local_port, 'engine.autoreload.on': False,
+         'log.screen': False})
+    cherrypy.quickstart(WebhookServer(), '/', {'/': {}})"""
