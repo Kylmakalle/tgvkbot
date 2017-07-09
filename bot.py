@@ -216,12 +216,20 @@ def check_thread(uid):
 def thread_supervisor():
     while True:
         for uid in vk_tokens.scan_iter():
-            if check_thread(uid.decode("utf-8")):
-                try:
-                    create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
-                except requests.exceptions.ReadTimeout as e:
-                    time.sleep(10)
-        time.sleep(120)
+            tries = 0
+            while check_thread(uid.decode("utf-8")):
+                if tries < 6:
+                    try:
+                        create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
+                    except:
+                        tries = tries + 1
+                else:
+                    mark = types.InlineKeyboardMarkup()
+                    login = types.InlineKeyboardButton('ВХОД', url=link)
+                    mark.add(login)
+                    bot.send_message(uid.decode("utf-8"), '<b>Непредвиденная ошибка, требуется повторный логин ВК!</b>',
+                                     parse_mode='HTML', reply_markup=mark)
+        time.sleep(60)
 
 
 supervisor = threading.Thread(name='supervisor', target=thread_supervisor)

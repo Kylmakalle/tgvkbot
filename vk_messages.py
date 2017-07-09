@@ -26,8 +26,9 @@ class VkPolling:
                 updates = vk_user.get_new_messages()
                 if updates:
                     handle_updates(vk_user, bot, chat_id, updates)
-            except requests.exceptions.ReadTimeout as e:
-                logging.warning('Retrying VK Polling in {} seconds.'.format(int(timeout / 10)))
+            except requests.exceptions.ReadTimeout:
+                logging.warning('Retrying VK Polling.')
+                timeout = 0
             for i in range(timeout):
                 if self._running:
                     time.sleep(0.1)
