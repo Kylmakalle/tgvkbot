@@ -1,7 +1,7 @@
 # tgvkbot
 Бот позволяет получать и отправлять сообщения VK находясь в Telegram
 
-http://www.asergey.me/tgvkbot
+https://www.asergey.me/tgvkbot
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
