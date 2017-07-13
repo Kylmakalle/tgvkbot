@@ -102,7 +102,7 @@ def attachment_handler(m, user, bot, chat_id, mainmessage=None):
 
         elif attach['type'] == 'audio':
             data = add_user_info(m, user['first_name'], user[
-                'last_name']) + '🎵 <a href="https://m.vk.com/audio?q={}%20-%20{}">{} - {}</a>'.format(
+                'last_name']) + '🎧 <a href="https://m.vk.com/audio?q={}%20-%20{}">{} - {}</a>'.format(
                 attach['audio']['artist'].replace(' ', '%20'),
                 attach['audio']['title'].replace(' ', '%20'), attach['audio']['artist'],
                 attach['audio']['title']) + add_reply_info(m)

@@ -75,8 +75,6 @@ def request_user_dialogs(session, userid):
     dialogs = vk.API(session).messages.getDialogs(count=200)
     for chat in dialogs[1:]:
         if 'chat_id' in chat:
-            if chat['title'].replace('\\', ''):
-                chat['title'] = chat['title'].replace('\\', '')
             chat['title'] = replace_shields(chat['title'])
             order.append({'title': chat['title'], 'id': 'group' + str(chat['chat_id'])})
         elif chat['uid'] > 0:
@@ -136,8 +134,6 @@ def search_users(message, text):
             markup.add(types.InlineKeyboardButton('{} {}'.format(chat['first_name'], chat['last_name']),
                                                   callback_data=str(chat['uid'])))
         elif chat['type'] == 'chat':
-            if chat['title'].replace('\\', ''):
-                chat['title'] = chat['title'].replace('\\', '')
             markup.add(
                 types.InlineKeyboardButton(replace_shields(chat['title']),
                                            callback_data='group' + str(chat['chat_id'])))
@@ -172,8 +168,6 @@ def callback_buttons(call):
             chat = vk.API(session).messages.getChat(chat_id=call.data.split('group')[1], fields=[])
             bot.answer_callback_query(call.id,
                                       'Вы в беседе {}'.format(replace_shields(chat['title']))).wait()
-            if chat['title'].replace('\\', ''):
-                chat['title'] = chat['title'].replace('\\', '')
             bot.send_message(call.from_user.id,
                              '<i>Вы в беседе {}</i>'.format(chat['title']),
                              parse_mode='HTML').wait()
@@ -275,8 +269,6 @@ def chat_command(message):
         if str(message.from_user.id) in currentchat:
             if 'group' in currentchat[str(message.from_user.id)]['id']:
                 chat = currentchat[str(message.from_user.id)]
-                if chat['title'].replace('\\', ''):
-                    chat['title'] = chat['title'].replace('\\', '')
                 bot.send_message(message.from_user.id,
                                  '<i>Вы в беседе {}</i>'.format(chat['title']),
                                  parse_mode='HTML').wait()
