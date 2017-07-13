@@ -215,17 +215,19 @@ def thread_supervisor():
         for uid in vk_tokens.scan_iter():
             tries = 0
             while check_thread(uid.decode("utf-8")):
-                if tries < 6:
+                if tries < 3:
                     try:
                         create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
                     except:
+                        time.sleep(10)
                         tries = tries + 1
                 else:
                     mark = types.InlineKeyboardMarkup()
                     login = types.InlineKeyboardButton('ВХОД', url=link)
                     mark.add(login)
                     bot.send_message(uid.decode("utf-8"), '<b>Непредвиденная ошибка, требуется повторный логин ВК!</b>',
-                                     parse_mode='HTML', reply_markup=mark)
+                                     parse_mode='HTML', reply_markup=mark).wait()
+                    break
         time.sleep(60)
 
 
