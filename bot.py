@@ -1,18 +1,18 @@
 import logging
 import os
 import re
-import redis
 import requests
 import telebot
 import threading
+import time
 import traceback
 import ujson
-import vk
-import wget
-import time
-from PIL import Image
 from telebot import types
 
+import redis
+import vk
+import wget
+from PIL import Image
 from credentials import token, vk_app_id
 from vk_messages import VkMessage, VkPolling
 
@@ -84,8 +84,16 @@ def request_user_dialogs(session, userid):
     for g in group_ids:
         positive_group_ids.append(str(g)[1:])
 
-    users = vk.API(session).users.get(user_ids=users_ids, fields=['first_name', 'last_name', 'uid'])
-    groups = vk.API(session).groups.getById(group_ids=positive_group_ids, fields=[])
+    if users_ids:
+        users = vk.API(session).users.get(user_ids=users_ids, fields=['first_name', 'last_name', 'uid'])
+    else:
+        users = []
+
+    if positive_group_ids:
+        groups = vk.API(session).groups.getById(group_ids=positive_group_ids, fields=[])
+    else:
+        groups = []
+
     for output in order:
         if output['title'] == ' ... ' or not output['title']:
             if output['id'] > 0:
@@ -204,24 +212,31 @@ def check_thread(uid):
 
 
 # Creating VkPolling threads and dialogs info after bot's reboot/exception using existing tokens
+def thread_reviver(uid):
+    tries = 0
+    while check_thread(uid.decode("utf-8")):
+        if tries < 4:
+            try:
+                create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
+            except:
+                time.sleep(10)
+                tries = tries + 1
+        else:
+            mark = types.InlineKeyboardMarkup()
+            login = types.InlineKeyboardButton('ВХОД', url=link)
+            mark.add(login)
+            bot.send_message(uid.decode("utf-8"), '<b>Непредвиденная ошибка, требуется повторный логин ВК!</b>',
+                             parse_mode='HTML', reply_markup=mark).wait()
+            break
+
+
 def thread_supervisor():
     while True:
         for uid in vk_tokens.scan_iter():
-            tries = 0
-            while check_thread(uid.decode("utf-8")):
-                if tries < 3:
-                    try:
-                        create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
-                    except:
-                        time.sleep(10)
-                        tries = tries + 1
-                else:
-                    mark = types.InlineKeyboardMarkup()
-                    login = types.InlineKeyboardButton('ВХОД', url=link)
-                    mark.add(login)
-                    bot.send_message(uid.decode("utf-8"), '<b>Непредвиденная ошибка, требуется повторный логин ВК!</b>',
-                                     parse_mode='HTML', reply_markup=mark).wait()
-                    break
+            reviver_thread = threading.Thread(name='reviver' + str(uid.decode('utf-8')), target=thread_reviver,
+                                              args=(uid,))
+            reviver_thread.setDaemon(True)
+            reviver_thread.start()
         time.sleep(60)
 
 
@@ -670,6 +685,7 @@ def reply_text(message):
         except Exception:
             bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
                          parse_mode='Markdown').wait()
+
 
 bot.polling(none_stop=True)
 """class WebhookServer(object):
