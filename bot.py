@@ -1,21 +1,25 @@
 import logging
 import os
 import re
-import redis
 import requests
 import telebot
 import threading
+import time
 import traceback
 import ujson
+from telebot import types
+
+import redis
 import vk
 import wget
-import time
 from PIL import Image
+
 from telebot import types
 
 import cherrypy
 
 from credentials import token, vk_app_id, bot_url, local_port
+
 from vk_messages import VkMessage, VkPolling
 
 vk_threads = {}
@@ -75,8 +79,6 @@ def request_user_dialogs(session, userid):
     dialogs = vk.API(session).messages.getDialogs(count=200)
     for chat in dialogs[1:]:
         if 'chat_id' in chat:
-            if chat['title'].replace('\\', ''):
-                chat['title'] = chat['title'].replace('\\', '')
             chat['title'] = replace_shields(chat['title'])
             order.append({'title': chat['title'], 'id': 'group' + str(chat['chat_id'])})
         elif chat['uid'] > 0:
@@ -89,8 +91,16 @@ def request_user_dialogs(session, userid):
     for g in group_ids:
         positive_group_ids.append(str(g)[1:])
 
-    users = vk.API(session).users.get(user_ids=users_ids, fields=['first_name', 'last_name', 'uid'])
-    groups = vk.API(session).groups.getById(group_ids=positive_group_ids, fields=[])
+    if users_ids:
+        users = vk.API(session).users.get(user_ids=users_ids, fields=['first_name', 'last_name', 'uid'])
+    else:
+        users = []
+
+    if positive_group_ids:
+        groups = vk.API(session).groups.getById(group_ids=positive_group_ids, fields=[])
+    else:
+        groups = []
+
     for output in order:
         if output['title'] == ' ... ' or not output['title']:
             if output['id'] > 0:
@@ -136,8 +146,6 @@ def search_users(message, text):
             markup.add(types.InlineKeyboardButton('{} {}'.format(chat['first_name'], chat['last_name']),
                                                   callback_data=str(chat['uid'])))
         elif chat['type'] == 'chat':
-            if chat['title'].replace('\\', ''):
-                chat['title'] = chat['title'].replace('\\', '')
             markup.add(
                 types.InlineKeyboardButton(replace_shields(chat['title']),
                                            callback_data='group' + str(chat['chat_id'])))
@@ -172,8 +180,6 @@ def callback_buttons(call):
             chat = vk.API(session).messages.getChat(chat_id=call.data.split('group')[1], fields=[])
             bot.answer_callback_query(call.id,
                                       'Вы в беседе {}'.format(replace_shields(chat['title']))).wait()
-            if chat['title'].replace('\\', ''):
-                chat['title'] = chat['title'].replace('\\', '')
             bot.send_message(call.from_user.id,
                              '<i>Вы в беседе {}</i>'.format(chat['title']),
                              parse_mode='HTML').wait()
@@ -213,22 +219,31 @@ def check_thread(uid):
 
 
 # Creating VkPolling threads and dialogs info after bot's reboot/exception using existing tokens
+def thread_reviver(uid):
+    tries = 0
+    while check_thread(uid.decode("utf-8")):
+        if tries < 4:
+            try:
+                create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
+            except:
+                time.sleep(10)
+                tries = tries + 1
+        else:
+            mark = types.InlineKeyboardMarkup()
+            login = types.InlineKeyboardButton('ВХОД', url=link)
+            mark.add(login)
+            bot.send_message(uid.decode("utf-8"), '<b>Непредвиденная ошибка, требуется повторный логин ВК!</b>',
+                             parse_mode='HTML', reply_markup=mark).wait()
+            break
+
+
 def thread_supervisor():
     while True:
         for uid in vk_tokens.scan_iter():
-            tries = 0
-            while check_thread(uid.decode("utf-8")):
-                if tries < 6:
-                    try:
-                        create_thread(uid.decode("utf-8"), vk_tokens.get(uid))
-                    except:
-                        tries = tries + 1
-                else:
-                    mark = types.InlineKeyboardMarkup()
-                    login = types.InlineKeyboardButton('ВХОД', url=link)
-                    mark.add(login)
-                    bot.send_message(uid.decode("utf-8"), '<b>Непредвиденная ошибка, требуется повторный логин ВК!</b>',
-                                     parse_mode='HTML', reply_markup=mark)
+            reviver_thread = threading.Thread(name='reviver' + str(uid.decode('utf-8')), target=thread_reviver,
+                                              args=(uid,))
+            reviver_thread.setDaemon(True)
+            reviver_thread.start()
         time.sleep(60)
 
 
@@ -273,8 +288,6 @@ def chat_command(message):
         if str(message.from_user.id) in currentchat:
             if 'group' in currentchat[str(message.from_user.id)]['id']:
                 chat = currentchat[str(message.from_user.id)]
-                if chat['title'].replace('\\', ''):
-                    chat['title'] = chat['title'].replace('\\', '')
                 bot.send_message(message.from_user.id,
                                  '<i>Вы в беседе {}</i>'.format(chat['title']),
                                  parse_mode='HTML').wait()
@@ -683,6 +696,7 @@ def reply_text(message):
 
 # bot.polling(none_stop=True)
 class WebhookServer(object):
+
     # index равнозначно /, т.к. отсутствию части после ip-адреса (грубо говоря)
     @cherrypy.expose
     def index(self):
