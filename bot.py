@@ -1,18 +1,17 @@
-import logging
 import os
 import re
+import redis
 import requests
 import telebot
 import threading
 import time
 import traceback
 import ujson
-from telebot import types
-
-import redis
 import vk
 import wget
 from PIL import Image
+from telebot import types
+
 from credentials import token, vk_app_id
 from vk_messages import VkMessage, VkPolling
 
@@ -176,7 +175,7 @@ def callback_buttons(call):
             bot.send_message(call.from_user.id,
                              '<i>Вы в беседе {}</i>'.format(chat['title']),
                              parse_mode='HTML').wait()
-            currentchat[str(call.from_user.id)] = call.data
+            currentchat[str(call.from_user.id)] = {'title': chat['title'], 'id': 'group' + str(chat['chat_id'])}
         elif call.data.lstrip('-').isdigit():
             session = VkMessage(vk_tokens.get(str(call.from_user.id))).session
             if '-' in call.data:
