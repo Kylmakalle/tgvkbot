@@ -3,14 +3,12 @@ import os
 import redis
 import requests
 import time
-import vk
 import ujson
+import vk
 import wget
-
 
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
 vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
-
 
 
 class VkPolling:
@@ -102,13 +100,43 @@ def attachment_handler(m, user, bot, chat_id, mainmessage=None):
                 send_doc_link(attach, m, user, bot, chat_id, mainmessage)
 
         elif attach['type'] == 'audio':
-            data = add_user_info(m, user['first_name'], user[
-                'last_name']) + '🎧 <a href="https://m.vk.com/audio?q={}%20-%20{}">{} - {}</a>'.format(
-                attach['audio']['artist'].replace(' ', '%20'),
-                attach['audio']['title'].replace(' ', '%20'), attach['audio']['artist'],
-                attach['audio']['title']) + add_reply_info(m)
-            bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
-                             disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
+            headers = {'content-type': 'application/json'}
+            audio = requests.get('https://asergey.me/vkmusapi/',
+                                 json={'aid': attach['audio']['aid'], 'owner_id': attach['audio']['owner_id']},
+                                 headers=headers)
+            try:
+                if audio.status_code == 200 and audio.json()['ok']:
+                    audio_dict = audio.json()
+                    data = add_user_info(m, user["first_name"],
+                                         user["last_name"]) + '🎧 <i>Аудиозапись</i>' + add_reply_info(m)
+                    audio_msg = bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
+                                                 disable_notification=check_notification(m),
+                                                 reply_to_message_id=mainmessage).wait()
+                    action = bot.send_chat_action(chat_id, 'upload_document')
+                    bot.send_audio(chat_id, audio_dict['vk_response']['url'],
+                                   duration=audio_dict['vk_response']['duration'],
+                                   title=audio_dict['vk_response']['title'],
+                                   performer=audio_dict['vk_response']['artist'],
+                                   disable_notification=check_notification(m),
+                                   reply_to_message_id=audio_msg.message_id).wait()
+                    action.wait()
+                else:
+                    data = add_user_info(m, user['first_name'], user[
+                        'last_name']) + '🎧 <a href="https://m.vk.com/audio?q={}%20-%20{}">{} - {}</a>'.format(
+                        attach['audio']['artist'].replace(' ', '%20'),
+                        attach['audio']['title'].replace(' ', '%20'), attach['audio']['artist'],
+                        attach['audio']['title']) + add_reply_info(m)
+                    bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
+                                     disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
+            except Exception as e:
+                print(e)
+                data = add_user_info(m, user['first_name'], user[
+                    'last_name']) + '🎧 <a href="https://m.vk.com/audio?q={}%20-%20{}">{} - {}</a>'.format(
+                    attach['audio']['artist'].replace(' ', '%20'),
+                    attach['audio']['title'].replace(' ', '%20'), attach['audio']['artist'],
+                    attach['audio']['title']) + add_reply_info(m)
+                bot.send_message(chat_id, data, parse_mode='HTML', disable_web_page_preview=False,
+                                 disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
 
         elif attach['type'] == 'doc':
             if attach['doc']['ext'] == 'gif':
