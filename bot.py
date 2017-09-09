@@ -12,9 +12,11 @@ import ujson
 import vk
 import wget
 from PIL import Image
+
 from telebot import types
 
-from credentials import token, vk_app_id, bot_url, local_port
+from credentials import token, vk_app_id
+
 from vk_messages import VkMessage, VkPolling
 
 vk_threads = {}
@@ -23,8 +25,7 @@ vk_dialogs = {}
 
 FILE_URL = 'https://api.telegram.org/file/bot{0}/{1}'
 
-tokens_pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
-vk_tokens = redis.StrictRedis(connection_pool=tokens_pool)
+vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
 
 currentchat = {}
 
@@ -670,6 +671,7 @@ def reply_text(message):
                 create_thread(message.from_user.id, code)
                 bot.send_message(message.from_user.id,
                                  'Вход выполнен в аккаунт {} {}!'.format(user['first_name'], user['last_name'])).wait()
+
                 bot.send_message(message.from_user.id, '[Использование](https://asergey.me/tgvkbot/usage/)',
                                  parse_mode='Markdown').wait()
             except:
@@ -686,11 +688,10 @@ def reply_text(message):
         except Exception:
             bot.reply_to(message, 'Произошла неизвестная ошибка при отправке',
                          parse_mode='Markdown').wait()
-            print('Error: {}'.format(traceback.format_exc()))
 
 
-# bot.polling(none_stop=True)
-class WebhookServer(object):
+bot.polling(none_stop=True)
+"""class WebhookServer(object):
     # index равнозначно /, т.к. отсутствию части после ip-адреса (грубо говоря)
     @cherrypy.expose
     def index(self):
@@ -708,4 +709,4 @@ if __name__ == '__main__':
     cherrypy.config.update(
         {'server.socket_host': '127.0.0.1', 'server.socket_port': local_port, 'engine.autoreload.on': False,
          'log.screen': False})
-    cherrypy.quickstart(WebhookServer(), '/', {'/': {}})
+    cherrypy.quickstart(WebhookServer(), '/', {'/': {}})"""
