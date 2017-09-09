@@ -12,6 +12,9 @@
 <p align="center"><img src ="assets/documents.PNG" /></p>
 
 
+В том числе и аудиозаписи
+<p align="center"><img src ="assets/vk_music.jpg" /></p>
+
 Список диалогов
 <p align="center"><img src ="assets/rsz_dialogs (1).jpg" /></p>
 
