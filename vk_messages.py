@@ -74,7 +74,7 @@ def handle_messages(m, vk_user, bot, chat_id, mainmessage=None):
 
 def handle_updates(vk_user, bot, chat_id, updates):
     for m in updates:
-        if True:  # not m['out']:
+        if not m['out']:
             handle_messages(m, vk_user, bot, chat_id)
 
 
