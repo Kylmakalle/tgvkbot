@@ -1,0 +1,6 @@
+pyTelegramBotAPI
+vk
+redis
+Pillow
+ujson
+wget
