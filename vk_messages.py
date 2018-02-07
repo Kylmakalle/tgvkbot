@@ -7,6 +7,8 @@ import ujson
 import vk
 import wget
 
+VK_POLLING_VERSION = '3.0'
+
 logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s', level=logging.WARNING, filename='vk.log')
 vk_tokens = redis.from_url(os.environ.get("REDIS_URL"))
 
@@ -36,10 +38,11 @@ class VkPolling:
 
 
 def handle_messages(m, vk_user, bot, chat_id, mainmessage=None):
+    api = vk.API(vk_user.session, v=VK_POLLING_VERSION)
     if m['uid'] > 0:
-        user = vk.API(vk_user.session).users.get(user_ids=m["uid"], fields=[])[0]
+        user = api.users.get(user_ids=m["uid"], fields=[])[0]
     else:
-        group = vk.API(vk_user.session).groups.getById(group_ids=str(m['uid'])[1:])[0]
+        group = api.groups.getById(group_ids=str(m['uid'])[1:])[0]
         user = {'first_name': group['name'], 'last_name': None}
 
     if 'body' in m and not 'attachment' in m and not 'geo' in m and not 'fwd_messages' in m:
@@ -228,8 +231,8 @@ def attachment_handler(m, user, bot, chat_id, mainmessage=None):
                                        disable_notification=check_notification(m),
                                        reply_to_message_id=mainmessage).wait()
             try:
-                user = vk.API(get_session(vk_tokens.get(str(chat_id)))).users.get(user_ids=attach['wall_reply']["uid"],
-                                                                                  fields=[])[0]
+                api = vk.API(get_session(vk_tokens.get(str(chat_id))), v=VK_POLLING_VERSION)
+                user = api.users.get(user_ids=attach['wall_reply']["uid"], fields=[])[0]
                 if attach['wall_reply']['text']:
                     data = add_user_info(m, user["first_name"], user["last_name"]) + \
                            attach['wall_reply']['text'].replace('<br>', '\n') + add_reply_info(m)
@@ -329,7 +332,7 @@ class VkMessage:
 
     def get_new_messages(self):
 
-        api = vk.API(self.session)
+        api = vk.API(self.session, v=VK_POLLING_VERSION)
         try:
             ts_pts = ujson.dumps({"ts": self.ts, "pts": self.pts})
             new = api.execute(code='return API.messages.getLongPollHistory({});'.format(ts_pts))
@@ -349,9 +352,7 @@ class VkMessage:
         if count == 0:
             pass
         else:
-            messages = msgs[1:]
-            for m in messages:
-                res.append(m)
+            res = msgs[1:]
         return res
 
 
@@ -360,7 +361,7 @@ def get_session(token):
 
 
 def get_tses(session):
-    api = vk.API(session)
+    api = vk.API(session, v=VK_POLLING_VERSION)
 
     ts = api.messages.getLongPollServer(need_pts=1)
     return ts['ts'], ts['pts']
