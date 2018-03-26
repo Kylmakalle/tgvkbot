@@ -266,18 +266,12 @@ def send_doc_link(doc, m, user, bot, chat_id, mainmessage=None):
                      disable_notification=check_notification(m), reply_to_message_id=mainmessage).wait()
 
 
-def check_forward_id(msg):
-    if 'mid' in msg:
-        return msg['mid']
-    else:
-        return None
-
-
 def add_reply_info(m):
     if 'chat_id' in m:
-        return '<a href="x{}.{}.{}">&#8203;</a>'.format(m['uid'], m['chat_id'], check_forward_id(m))
+        return '<a href="x{}.{}.{}">&#8203;</a>'.format(m['uid'], m['chat_id'],
+                                                        m.get('mid'))
     else:
-        return '<a href="x{}.{}.00">&#8203;</a>'.format(m['uid'], check_forward_id(m))
+        return '<a href="x{}.{}.00">&#8203;</a>'.format(m['uid'], m.get('mid'))
 
 
 def add_user_info(m, first_name, last_name):
