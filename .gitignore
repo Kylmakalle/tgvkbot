@@ -1,0 +1,5 @@
+.idea/
+__pycache__/
+data/migrations/*
+!data/migrations/__init__.py
+config.py
