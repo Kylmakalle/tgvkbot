@@ -469,9 +469,11 @@ async def choose_chat(call: types.CallbackQuery):
                 )
             markup = InlineKeyboardMarkup()
             markup.add(InlineKeyboardButton('Установить аватар и название', callback_data=f'setinfo{vkchat.cid}'))
-            await bot.edit_message_text(
-                'Чат успешно привязан. Я могу автоматически изменить название и установить аватар, сделай бота администратором и убедись в наличии прав на редактирование информации группы',
-                call.message.chat.id, call.message.message_id, reply_markup=markup)
+            text = 'Чат успешно привязан. Я могу автоматически изменить название и установить аватар, сделай бота администратором и убедись в наличии прав на редактирование информации группы',
+            if call.message.chat.type == 'group':
+                text += '\n<b>Внимание!</b> Параметр <i>"All Members Are Administrators"</i> должен быть отключён и боту должна быть присвоена админка в отдельном порядке!'
+            await bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup,
+                                        parse_mode=ParseMode.HTML)
             await bot.answer_callback_query(call.id)
     else:
         await bot.answer_callback_query(call.id, 'Вход не выполнен! Сперва нужно выполнить вход в ВК через бота',
@@ -626,7 +628,7 @@ async def help_command(msg: types.Message):
                    '/read /r - Прочесть диалог ВКонтакте\n' \
                    '/search /s - Поиск по диалогам\n' \
                    '/chat - Список связанных чатов с диалогами ВКонтакте, привязать чат к диалогу можно добавив бота в группу\n' \
-                   '/stop - Выход из ВКонтакте' \
+                   '/stop - Выход из ВКонтакте\n' \
                    '/help - Помощь'
 
     await bot.send_message(msg.chat.id, HELP_MESSAGE, parse_mode=ParseMode.HTML)
@@ -808,6 +810,8 @@ async def handle_join(msg: types.Message, edit=False, chat_id=None, message_id=N
     await bot.send_chat_action(msg.chat.id, 'typing')
     vk_user = VkUser.objects.filter(owner=user).first()
     pages = None
+    reply_to_message_id = None
+    markup = None
     if vk_user:
         if forward:
             text = text or '<i>Этот чат уже привязан к диалогу ВКонтакте, Вы можете выбрать новый диалог</i>'
@@ -824,15 +828,20 @@ async def handle_join(msg: types.Message, edit=False, chat_id=None, message_id=N
             await get_pages_switcher(markup, 0, pages)
     else:
         me = await bot.me
-        text = '<i>Вход не выполнен! Сперва нужно выполнить вход в ВК через бота</i>'
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton('ВХОД', url=f'https//t.me/{me.username}?start=login'),
-                   InlineKeyboardButton('✅ Я залогинился', callback_data=f'logged-{msg.from_user.id}'))
+        if msg.chat.type == 'private':
+            text = 'Вход не выполнен! /start для входа'
+            reply_to_message_id = msg.message_id
+        else:
+            text = '<i>Вход не выполнен! Сперва нужно выполнить вход в ВК через бота</i>'
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton('ВХОД', url=f'https://t.me/{me.username}?start=login'),
+                       InlineKeyboardButton('✅ Я залогинился', callback_data=f'logged-{msg.from_user.id}'))
     if edit:
         msg_with_markup = await bot.edit_message_text(text=text, chat_id=chat_id, message_id=message_id,
                                                       reply_markup=markup, parse_mode=ParseMode.HTML)
     else:
-        msg_with_markup = await bot.send_message(msg.chat.id, text=text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        msg_with_markup = await bot.send_message(msg.chat.id, text=text, reply_markup=markup, parse_mode=ParseMode.HTML,
+                                                 reply_to_message_id=reply_to_message_id)
     if pages:
         for page in pages:
             for row in page:
