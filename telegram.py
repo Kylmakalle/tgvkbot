@@ -311,7 +311,7 @@ async def get_dialog_info(api, vk_chat_id, name_case='nom'):
     dialog_type = ''
     if vk_chat_id >= 2000000000:
         dialog_info = await api('messages.getChat', chat_id=vk_chat_id - 2000000000)
-        title = await dialog_info['title']
+        title = dialog_info['title']
         photo = dialog_info[await get_max_photo(dialog_info)]
         dialog_type = 'chat'
     elif vk_chat_id > 0:
@@ -469,11 +469,14 @@ async def choose_chat(call: types.CallbackQuery):
                 )
             markup = InlineKeyboardMarkup()
             markup.add(InlineKeyboardButton('Установить аватар и название', callback_data=f'setinfo{vkchat.cid}'))
-            text = 'Чат успешно привязан. Я могу автоматически изменить название и установить аватар, сделай бота администратором и убедись в наличии прав на редактирование информации группы',
+            text = 'Чат успешно привязан. Я могу автоматически изменить название и установить аватар, сделай бота администратором и убедись в наличии прав на редактирование информации группы'
             if call.message.chat.type == 'group':
                 text += '\n<b>Внимание!</b> Параметр <i>"All Members Are Administrators"</i> должен быть отключён и боту должна быть присвоена админка в отдельном порядке!'
-            await bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup,
-                                        parse_mode=ParseMode.HTML)
+            try:
+                await bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup,
+                                            parse_mode=ParseMode.HTML)
+            except MessageNotModified:
+                pass
             await bot.answer_callback_query(call.id)
     else:
         await bot.answer_callback_query(call.id, 'Вход не выполнен! Сперва нужно выполнить вход в ВК через бота',
