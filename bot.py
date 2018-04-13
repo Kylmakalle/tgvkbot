@@ -3,7 +3,6 @@ import logging
 import re
 import tempfile
 import ujson
-from pprint import pprint
 
 import aiohttp
 import django.conf

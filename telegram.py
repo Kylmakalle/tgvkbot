@@ -513,7 +513,7 @@ async def send_welcome(msg: types.Message):
                             ' и отправь мне то, что получишь в адресной строке.',
                             reply_markup=mark)
         else:
-            await msg.reply('Вход уже выполнен!\n/logout для выхода.')
+            await msg.reply('Вход уже выполнен!\n/stop для выхода.')
     else:
         markup = InlineKeyboardMarkup()
         me = await bot.me
@@ -618,8 +618,6 @@ async def chat_command(msg: types.Message):
         else:
             await bot.send_message(msg.chat.id,
                                    'У Вас нет связанных чатов. Чтобы привязать чат, добавьте бота в группу, а если бот уже добавлен - используйте команду /dialogs')
-    # TODO: /leave chat
-    # TODO: manage forwards
 
 
 @dp.message_handler(commands=['help'])
@@ -810,7 +808,10 @@ async def handle_join(msg: types.Message, edit=False, chat_id=None, message_id=N
     user, user_created = await update_user_info(msg.from_user)
     tgchat, tgchat_created = await update_chat_info(msg.chat)
     forward = Forward.objects.filter(tgchat=tgchat).first()
-    await bot.send_chat_action(msg.chat.id, 'typing')
+    try:
+        await bot.send_chat_action(msg.chat.id, 'typing')
+    except:
+        return
     vk_user = VkUser.objects.filter(owner=user).first()
     pages = None
     reply_to_message_id = None
