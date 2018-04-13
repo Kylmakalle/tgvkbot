@@ -536,6 +536,7 @@ async def stop_command(msg: types.Message):
         driver = DRIVERS.get(existing_vkuser.token, '')
         if driver:
             driver.close()
+            del DRIVERS[existing_vkuser.token]
         existing_vkuser.delete()
         await msg.reply('Успешный выход!')
 
@@ -656,6 +657,7 @@ async def handle_text(msg: types.Message):
                     driver = DRIVERS.get(vkuser.token, '')
                     if driver:
                         driver.close()
+                        del DRIVERS[vkuser.token]
                     TASKS.append({'token': vkuser.token, 'task': asyncio.ensure_future(vk_polling(vkuser))})
                     await msg.reply(
                         'Вход выполнен в аккаунт {} {}!\n[Использование](https://asergey.me/tgvkbot/usage/)'.format(
