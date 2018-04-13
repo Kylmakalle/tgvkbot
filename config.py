@@ -10,23 +10,27 @@ def get_external_host():
 HOST = ''
 
 WEBHOOK_HOST = os.environ.get('WEBHOOK_HOST', HOST or get_external_host())
-WEBHOOK_PORT = os.environ.get('WEBHOOK_PORT', 443)
+WEBHOOK_PORT = os.environ.get('WEBHOOK_PORT', 8443)
 WEBHOOK_URL_PATH = os.environ.get('WEBHOOK_URL_PATH', '/tgwebhook')
 
-WEBHOOK_URL = f"https://{WEBHOOK_HOST}:{WEBHOOK_PORT}{WEBHOOK_URL_PATH}"
+WEBHOOK_URL = "https://{WEBHOOK_HOST}:{WEBHOOK_PORT}{WEBHOOK_URL_PATH}".format(WEBHOOK_HOST=WEBHOOK_HOST,
+                                                                               WEBHOOK_PORT=WEBHOOK_PORT,
+                                                                               WEBHOOK_URL_PATH=WEBHOOK_URL_PATH)
 
-WEBAPP_HOST = os.environ.get('WEBAPP_HOST', 'localhost')
-WEBAPP_PORT = os.environ.get('WEBAPP_PORT', 3001)
+WEBHOOK_SSL_CERT = './webhook_cert.pem'
 
-DATABASE_USER = os.environ.get('DATABASE_USER', 'postgres')
-DATABASE_PASSWORD = os.environ.get('DATABASE_PASSWORD', 'postgres')
-DATABASE_HOST = os.environ.get('DATABASE_HOST', 'localhost')
+WEBAPP_HOST = os.environ.get('WEBAPP_HOST', '0.0.0.0')
+WEBAPP_PORT = os.environ.get('WEBAPP_PORT', 7777)
+
+DATABASE_USER = os.environ.get('POSTGRES_USER', 'postgres')
+DATABASE_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'postgres')
+DATABASE_HOST = os.environ.get('DATABASE_HOST', 'db')
 DATABASE_PORT = os.environ.get('DATABASE_PORT', '5432')
-DATABASE_NAME = os.environ.get('DATABASE_NAME', 'tgvkbot')
+DATABASE_NAME = os.environ.get('POSTGRES_DB', 'tgvkbot')
 
-VK_APP_ID = os.environ.get('VK_APP_ID', 1234567)
+VK_APP_ID = os.environ.get('VK_APP_ID')
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '123456789:AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLL')
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
 
 SETTINGS_VAR = os.environ.get('SETTINGS_VAR', 'DJANGO_TGVKBOT_SETTINGS_MODULE')
 

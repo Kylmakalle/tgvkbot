@@ -860,16 +860,8 @@ async def handle_chat_migration(msg: types.Message):
 
 
 async def on_startup(app):
-    webhook = await bot.get_webhook_info()
-
-    # If URL is bad
-    if webhook.url != WEBHOOK_URL:
-        # If URL doesnt match current - remove webhook
-        if not webhook.url:
-            await bot.delete_webhook()
-
-        # Set new URL for webhook
-        await bot.set_webhook(WEBHOOK_URL)
+    # Set new URL for webhook
+    await bot.set_webhook(WEBHOOK_URL, certificate=open(WEBHOOK_SSL_CERT, 'rb'))
 
 
 if __name__ == '__main__':

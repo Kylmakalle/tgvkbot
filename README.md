@@ -1,11 +1,15 @@
 # tgvkbot
 Send and recieve VK messages in telegram.
 
+# Установка (Ubuntu 16.04)
 ```
-git clone ...
+git clone https://github.com/Kylmakalle/tgvkbot
 cd tgvkbot
-pip install -r requirements.txt
-# Edit config.py file
-python manage.py makemigrations data && python manage.py migrate data
-python telegram.py
+chmod +x install.sh
+./install.sh 
+
+...
+
+Telegram Token: 123456789:AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLL
+VK APP ID: 1234567
 ```

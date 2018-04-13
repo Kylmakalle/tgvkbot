@@ -1,4 +1,4 @@
-from concurrent.futures._base import CancelledError
+from concurrent.futures._base import CancelledError, TimeoutError
 
 from aiovk.longpoll import LongPoll
 
@@ -869,7 +869,7 @@ async def vk_polling(vkuser: VkUser):
             lp = LongPoll(session, mode=10, version=4)
             while VkUser.objects.filter(token=vkuser.token, is_polling=True).exists():
                 data = await lp.wait()
-                log.debug('Longpoll: ' + str(data))
+                log.warning('Longpoll: ' + str(data))
                 if data['updates']:
                     for update in data['updates']:
                         await process_longpoll_event(api, update)
@@ -882,6 +882,9 @@ async def vk_polling(vkuser: VkUser):
             vkuser.is_polling = False
             vkuser.save()
             break
+        except TimeoutError:
+            log.warning('Polling timeout')
+            asyncio.sleep(5)
         except CancelledError:
             log.warning('Stopped polling for: id ' + str(vkuser.pk))
             break

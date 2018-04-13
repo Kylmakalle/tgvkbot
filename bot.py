@@ -14,6 +14,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.types import ParseMode, MediaGroup, InlineKeyboardMarkup, InlineKeyboardButton, ChatActions
 from aiogram.utils.exceptions import *
 from aiogram.utils.parts import safe_split_text, split_text, MAX_MESSAGE_LENGTH
+from aiogram.utils import context
 from aiovk import TokenSession, API
 from aiovk.drivers import HttpDriver
 from aiovk.exceptions import *
@@ -100,3 +101,4 @@ async def get_content(url, docname='tgvkbot.document', chrome_headers=True, rewr
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
+dp.loop.set_task_factory(context.task_factory)

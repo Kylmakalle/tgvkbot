@@ -1,0 +1,45 @@
+version: '3'
+services:
+  db:
+    image: "postgres:9.6.5"
+    volumes:
+      - "dbdata:/var/lib/postgresql/data"
+    env_file:
+      - env_file
+    restart: always
+    networks:
+      - db_nw
+  tgbot:
+    build: .
+    volumes:
+      - .:/src
+    env_file:
+      - env_file
+    command: bash -c "python manage.py makemigrations data && python manage.py migrate data && python telegram.py"
+    restart: always
+    networks:
+      - db_nw
+      - web_nw
+    depends_on:
+      - db
+  nginx:
+    image: "nginx:1.13.5"
+    ports:
+      - "8443:8443"
+    restart: always
+    volumes:
+      - .:/src
+      - ./conf.d:/etc/nginx/conf.d
+    env_file:
+      - env_file
+    networks:
+      - web_nw
+    depends_on:
+      - tgbot
+networks:
+  db_nw:
+    driver: bridge
+  web_nw:
+    driver: bridge
+volumes:
+  dbdata:
