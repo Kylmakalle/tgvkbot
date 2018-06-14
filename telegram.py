@@ -312,7 +312,11 @@ async def get_dialog_info(api, vk_chat_id, name_case='nom'):
     if vk_chat_id >= 2000000000:
         dialog_info = await api('messages.getChat', chat_id=vk_chat_id - 2000000000)
         title = dialog_info['title']
-        photo = dialog_info[await get_max_photo(dialog_info)]
+        max_photo = await get_max_photo(dialog_info)
+        if max_photo:
+            photo = dialog_info[max_photo]
+        else:
+            photo = None
         dialog_type = 'chat'
     elif vk_chat_id > 0:
         dialog_info = await api('users.get', user_ids=vk_chat_id, fields='photo_max', name_case=name_case)
@@ -324,7 +328,11 @@ async def get_dialog_info(api, vk_chat_id, name_case='nom'):
     elif vk_chat_id < 0:
         dialog_info = await api('groups.getById', group_ids=abs(vk_chat_id))
         title = dialog_info[0]['name']
-        photo = dialog_info[0][await get_max_photo(dialog_info[0])]
+        max_photo = await get_max_photo(dialog_info[0])
+        if max_photo:
+            photo = dialog_info[0][max_photo]
+        else:
+            photo = None
         dialog_type = 'group'
 
     return {'title': title, 'photo': photo, 'type': dialog_type}

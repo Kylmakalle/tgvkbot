@@ -567,7 +567,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
             if forward_setting:
                 if forwarded or is_multichat:
                     header = f'<b>{name}</b>' + '\n'
-                if not forwarded:
+                elif not forwarded:
                     header = ''
                 to_tg_chat = forward_setting.tgchat.cid
             else:
@@ -863,7 +863,6 @@ async def vk_polling(vkuser: VkUser):
     while True:
         try:
             session = VkSession(access_token=vkuser.token, driver=await get_driver(vkuser.token))
-            session.API_VERSION = API_VERSION
             log.warning('Starting polling for: id ' + str(vkuser.pk))
             api = API(session)
             lp = LongPoll(session, mode=10, version=4)

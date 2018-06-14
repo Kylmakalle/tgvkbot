@@ -68,7 +68,8 @@ async def get_max_photo(obj, keyword='photo'):
         m = max_photo_re.match(k)
         if m:
             maxarr.append(int(m.group(1)))
-    return keyword + '_' + str(max(maxarr))
+    if maxarr:
+        return keyword + '_' + str(max(maxarr))
 
 
 async def get_content(url, docname='tgvkbot.document', chrome_headers=True, rewrite_name=False,
