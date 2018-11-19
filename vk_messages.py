@@ -683,7 +683,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     )
             if vk_msg.get('fwd_messages'):
                 await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
-                fwd_ptr = tg_message = await bot.send_message(vkuser.owner.uid, header + '<i>Пересланные сообщения</i>',
+                fwd_ptr = tg_message = await bot.send_message(to_tg_chat, header + '<i>Пересланные сообщения</i>',
                                                               parse_mode=ParseMode.HTML,
                                                               reply_to_message_id=main_message,
                                                               disable_notification=disable_notify)
