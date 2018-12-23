@@ -6,7 +6,7 @@ from bot import *
 from aiogram.utils.markdown import quote_html, hlink
 
 log = logging.getLogger('vk_messages')
-mention_re = re.compile('\[([a-zA-Z0-9_]*)\|@([a-zA-Z0-9_]*)\]', re.MULTILINE)
+inline_link_re = re.compile('\[([a-zA-Z0-9_]*)\|(.*?)\]', re.MULTILINE)
 
 
 ################### Честно взято по лицензии https://github.com/vk-brain/sketal/blob/master/LICENSE ###################
@@ -601,12 +601,13 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
 
             if body_parts:
                 for body_part in range(len(body_parts)):
-                    m = mention_re.finditer(body_parts[body_part])
+                    m = inline_link_re.finditer(body_parts[body_part])
                     for i in m:
-                        body_parts[body_part] = body_parts[body_part].replace(i.group(0),
-                                                                              hlink('@{}'.format(i.group(2)),
-                                                                                    url='https://vk.com/{}'.format(
-                                                                                        i.group(1))))
+                        vk_url = f'https://vk.com/{i.group(1)}'
+                        check_url = await check_vk_url(vk_url)
+                        if check_url:
+                            body_parts[body_part] = body_parts[body_part].replace(i.group(0),
+                                                                                  hlink(f'{i.group(2)}', url=vk_url))
                     await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                     tg_message = await bot.send_message(vkuser.owner.uid, body_parts[body_part],
                                                         parse_mode=ParseMode.HTML,
@@ -623,10 +624,12 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                         tg_id=tg_message.message_id
                     )
             elif not body_parts and (header + body):
-                m = mention_re.finditer(body)
+                m = inline_link_re.finditer(body)
                 for i in m:
-                    body = body.replace(i.group(0),
-                                        hlink('@{}'.format(i.group(2)), url='https://vk.com/{}'.format(i.group(1))))
+                    vk_url = f'https://vk.com/{i.group(1)}'
+                    check_url = await check_vk_url(vk_url)
+                    if check_url:
+                        body = body.replace(i.group(0), hlink(f'{i.group(2)}', url=vk_url))
                 await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                 header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
                                                                      parse_mode=ParseMode.HTML,
@@ -737,6 +740,17 @@ async def tgsend(method, *args, **kwargs):
 
 async def process_event(msg):
     pass
+
+
+async def check_vk_url(url):
+    try:
+        with aiohttp.ClientSession(conn_timeout=5) as session:
+            r = await session.request('GET', url)
+            if r.status == 200:
+                return True
+            return False
+    except:
+        return False
 
 
 async def process_attachment(attachment):
