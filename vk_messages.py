@@ -603,6 +603,10 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                                                         parse_mode=ParseMode.HTML,
                                                         reply_to_message_id=main_message,
                                                         disable_notification=disable_notify)
+                    if body_part == 0:
+                        header_message = tg_message
+                        if forwarded:
+                            main_message = header_message.message_id
                     Message.objects.create(
                         vk_chat=vk_chat_id,
                         vk_id=vk_msg_id,
@@ -611,9 +615,12 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     )
             elif not body_parts and (header + body):
                 await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
-                tg_message = await bot.send_message(to_tg_chat, header + body, parse_mode=ParseMode.HTML,
-                                                    reply_to_message_id=main_message,
-                                                    disable_notification=disable_notify)
+                header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
+                                                                     parse_mode=ParseMode.HTML,
+                                                                     reply_to_message_id=main_message,
+                                                                     disable_notification=disable_notify)
+                if forwarded:
+                    main_message = header_message.message_id
                 Message.objects.create(
                     vk_chat=vk_chat_id,
                     vk_id=vk_msg_id,
@@ -683,23 +690,12 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     )
             if vk_msg.get('fwd_messages'):
                 await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
-                fwd_ptr = tg_message = await bot.send_message(vkuser.owner.uid, header + '<i>Пересланные сообщения</i>',
-                                                              parse_mode=ParseMode.HTML,
-                                                              reply_to_message_id=main_message,
-                                                              disable_notification=disable_notify)
-                Message.objects.create(
-                    vk_chat=vk_chat_id,
-                    vk_id=vk_msg_id,
-                    tg_chat=tg_message.chat.id,
-                    tg_id=tg_message.message_id
-                )
-
                 for fwd_message in vk_msg['fwd_messages']:
                     await process_message(msg, token=token, is_multichat=is_multichat, vk_chat_id=vk_chat_id,
                                           user_id=fwd_message['user_id'],
                                           forward_settings=forward_settings, vk_msg_id=vk_msg_id, vkchat=vkchat,
                                           full_msg={'items': [fwd_message]}, forwarded=True,
-                                          main_message=fwd_ptr.message_id, known_users=known_users)
+                                          main_message=header_message.message_id, known_users=known_users)
 
 
 async def get_name(identifier, api):
