@@ -3,8 +3,10 @@ from concurrent.futures._base import CancelledError, TimeoutError
 from aiovk.longpoll import LongPoll
 
 from bot import *
+from aiogram.utils.markdown import quote_html, hlink
 
 log = logging.getLogger('vk_messages')
+mention_re = re.compile('\[([a-zA-Z0-9_]*)\|@([a-zA-Z0-9_]*)\]', re.MULTILINE)
 
 
 ################### Честно взято по лицензии https://github.com/vk-brain/sketal/blob/master/LICENSE ###################
@@ -578,7 +580,8 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 to_tg_chat = vkuser.owner.uid
 
             body_parts = []
-            body = vk_msg.get('body', '')
+            body = quote_html(vk_msg.get('body', ''))
+
             if body:
                 if (len(header) + len(body)) > MAX_MESSAGE_LENGTH:
                     body_parts = safe_split_text(header + body, MAX_MESSAGE_LENGTH)
@@ -598,6 +601,12 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
 
             if body_parts:
                 for body_part in range(len(body_parts)):
+                    m = mention_re.finditer(body_parts[body_part])
+                    for i in m:
+                        body_parts[body_part] = body_parts[body_part].replace(i.group(0),
+                                                                              hlink('@{}'.format(i.group(2)),
+                                                                                    url='https://vk.com/{}'.format(
+                                                                                        i.group(1))))
                     await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                     tg_message = await bot.send_message(vkuser.owner.uid, body_parts[body_part],
                                                         parse_mode=ParseMode.HTML,
@@ -614,6 +623,10 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                         tg_id=tg_message.message_id
                     )
             elif not body_parts and (header + body):
+                m = mention_re.finditer(body)
+                for i in m:
+                    body = body.replace(i.group(0),
+                                        hlink('@{}'.format(i.group(2)), url='https://vk.com/{}'.format(i.group(1))))
                 await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                 header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
                                                                      parse_mode=ParseMode.HTML,
@@ -717,7 +730,7 @@ async def tgsend(method, *args, **kwargs):
         return tg_message
     except RetryAfter as e:
         asyncio.sleep(e.timeout)
-        tgsend(method, *args, **kwargs)
+        await tgsend(method, *args, **kwargs)
     except Exception:
         log.exception(msg='Error in message sending', exc_info=True)
 
