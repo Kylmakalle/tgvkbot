@@ -1,3 +1,8 @@
+### Новая версия в разработке!
+Актуальная ветка разработки находится [здесь](https://github.com/Kylmakalle/tgvkbot/tree/async-dev)
+
+Подробнее в [чате](https://t.me/joinchat/BZq6jwxeTh04qBzilM5x3g) 
+
 # tgvkbot
 Бот позволяет получать и отправлять сообщения VK находясь в Telegram
 
