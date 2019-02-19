@@ -555,7 +555,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
             disable_notify = bool(vk_msg.get('push_settings', False))
             attaches_scheme = []
             if vk_msg.get('attachments'):
-                attaches_scheme = [await process_attachment(attachment) for attachment in
+                attaches_scheme = [await process_attachment(attachment, token) for attachment in
                                    vk_msg['attachments']]
             if vk_msg.get('geo'):
                 location = vk_msg['geo']['coordinates'].split(' ')
@@ -608,7 +608,10 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                         if check_url:
                             body_parts[body_part] = body_parts[body_part].replace(i.group(0),
                                                                                   hlink(f'{i.group(2)}', url=vk_url))
-                    await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
+                    try:
+                        await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
+                    except:
+                        return
                     tg_message = await bot.send_message(vkuser.owner.uid, body_parts[body_part],
                                                         parse_mode=ParseMode.HTML,
                                                         reply_to_message_id=main_message,
@@ -630,7 +633,10 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     check_url = await check_vk_url(vk_url)
                     if check_url:
                         body = body.replace(i.group(0), hlink(f'{i.group(2)}', url=vk_url))
-                await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
+                try:
+                    await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
+                except:
+                    return
                 header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
                                                                      parse_mode=ParseMode.HTML,
                                                                      reply_to_message_id=main_message,
@@ -697,7 +703,10 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                         await bot.send_chat_action(to_tg_chat, ChatActions.FIND_LOCATION)
                         tg_message = await tgsend(bot.send_venue, to_tg_chat, *attachment['content'],
                                                   reply_to_message_id=main_message, disable_notification=disable_notify)
-
+                    elif attachment['type'] == 'audio':
+                        await bot.send_chat_action(to_tg_chat, ChatActions.UPLOAD_DOCUMENT)
+                        tg_message = await tgsend(bot.send_audio, to_tg_chat, audio=attachment['content'],
+                                                  reply_to_message_id=main_message, disable_notification=disable_notify)
                     Message.objects.create(
                         vk_chat=vk_chat_id,
                         vk_id=vk_msg_id,
@@ -753,14 +762,41 @@ async def check_vk_url(url):
         return False
 
 
-async def process_attachment(attachment):
+async def process_attachment(attachment, token=None):
     atype = attachment.get('type')
     if atype == 'photo':
         photo_url = attachment[atype][await get_max_photo(attachment[atype])]
         return {'content': photo_url, 'type': 'photo'}
 
     elif atype == 'audio':
-        pass
+        if AUDIO_ACCESS_URL:
+            if token:
+                try:
+                    with aiohttp.ClientSession() as session:
+                        r = await session.request('GET', AUDIO_ACCESS_URL.format(token=token,
+                                                                                 owner_id=attachment[atype]['owner_id'],
+                                                                                 audio_id=attachment[atype]['id']))
+                        if r.status != 200:
+                            raise Exception
+                        audio = await r.read()
+                        audio = io.BytesIO(audio)
+                        return {'content': audio, 'type': 'audio'}
+                except:
+                    pass
+        elif AUDIO_URL:
+            try:
+                with aiohttp.ClientSession() as session:
+                    r = await session.request('GET', AUDIO_URL.format(owner_id=attachment[atype]['owner_id'],
+                                                                      audio_id=attachment[atype]['id']))
+                    if r.status != 200:
+                        raise Exception
+                    audio = await r.read()
+                    audio = io.BytesIO(audio)
+                    return {'content': audio, 'type': 'audio'}
+            except:
+                pass
+
+        return {'content': '<i>Аудио</i>', 'type': 'text'}
 
     elif atype == 'video':
         title = attachment[atype]['title']

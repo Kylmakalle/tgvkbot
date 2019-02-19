@@ -9,7 +9,8 @@ from vk_messages import vk_polling_tasks, vk_polling
 
 log = logging.getLogger('telegram')
 
-oauth_link = re.compile('https://oauth\.vk\.com/blank\.html#access_token=([a-z0-9]*)&expires_in=[0-9]*&user_id=[0-9]*')
+oauth_link = re.compile(
+    'https://(oauth|api)\.vk\.com/blank\.html#access_token=([a-z0-9]*)&expires_in=[0-9]*&user_id=[0-9]*')
 
 
 async def get_pages_switcher(markup, page, pages):
@@ -273,6 +274,22 @@ async def search_dialogs(msg: types.Message, user=None):
     await bot.send_message(msg.chat.id, text, reply_markup=markup, parse_mode=ParseMode.HTML)
 
 
+async def refresh_token(vkuser):
+    try:
+        with aiohttp.ClientSession() as session:
+            r = await session.request('GET', TOKEN_REFRESH_URL, params={'token': vkuser.token})
+            data = await r.json()
+            if data['ok']:
+                vkuser.token = data['token']
+                vkuser.save()
+                session.close()
+            else:
+                return False
+        return True
+    except:
+        pass
+
+
 @dp.callback_query_handler(func=lambda call: call and call.message and call.data and call.data.startswith('logged'))
 async def check_logged(call: types.CallbackQuery):
     vkuser = VkUser.objects.filter(owner__uid=call.from_user.id).count()
@@ -512,7 +529,7 @@ async def send_welcome(msg: types.Message):
         existing_vkuser = VkUser.objects.filter(owner=user).count()
         if not existing_vkuser:
             link = 'https://oauth.vk.com/authorize?client_id={}&' \
-                   'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video,stories' \
+                   'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video,stories,audio' \
                    '&response_type=token&v={}'.format(VK_APP_ID, API_VERSION)
             mark = InlineKeyboardMarkup()
             login = InlineKeyboardButton('ВХОД', url=link)
@@ -651,7 +668,8 @@ async def handle_text(msg: types.Message):
     if msg.chat.type == 'private':
         m = oauth_link.search(msg.text)
         if m:
-            token = m.group(1)
+            await bot.send_chat_action(msg.from_user.id, ChatActions.TYPING)
+            token = m.group(2)
             if not VkUser.objects.filter(token=token).exists():
                 try:
                     session = VkSession(access_token=token, driver=await get_driver(token))
@@ -666,10 +684,13 @@ async def handle_text(msg: types.Message):
                     if driver:
                         driver.close()
                         del DRIVERS[vkuser.token]
+                    refreshed_token = await refresh_token(vkuser)
                     TASKS.append({'token': vkuser.token, 'task': asyncio.ensure_future(vk_polling(vkuser))})
-                    await msg.reply(
-                        'Вход выполнен в аккаунт {} {}!\n[Использование](https://asergey.me/tgvkbot/usage/)'.format(
+                    logged_in = await msg.reply(
+                        'Вход выполнен в аккаунт {} {}!\n[Использование](https://akentev.com/tgvkbot/usage/)'.format(
                             vkuserinfo['first_name'], vkuserinfo.get('last_name', '')), parse_mode='Markdown')
+                    if refreshed_token:
+                        await logged_in.reply('*Вам доступна музыка 🎵*', parse_mode='Markdown')
                 except VkAuthError:
                     await msg.reply('Неверная ссылка, попробуйте ещё раз!')
             else:
@@ -724,7 +745,7 @@ async def handle_photo(msg: types.Message):
                 if not vk_message:
                     await msg.reply('<b>Произошла ошибка при отправке</b>', parse_mode=ParseMode.HTML)
             else:
-                msg.reply('<b>Ошибка при загрузке файла. Сообщение не отправлено!</b>', parse_mode=ParseMode.HTML)
+                await msg.reply('<b>Ошибка при загрузке файла. Сообщение не отправлено!</b>', parse_mode=ParseMode.HTML)
 
 
 @dp.message_handler(content_types=['document', 'voice', 'audio', 'sticker'])

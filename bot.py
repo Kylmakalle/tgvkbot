@@ -102,3 +102,19 @@ async def get_content(url, docname='tgvkbot.document', chrome_headers=True, rewr
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
 dp.loop.set_task_factory(context.task_factory)
+import traceback
+
+
+@dp.errors_handler()
+async def all_errors_handler(dp, update, e):
+    if 'message' in dir(update) and update.message:
+        user = update.message.from_user.full_name
+        user_id = update.message.from_user.id
+    else:
+        user = update.callback_query.from_user.full_name
+        user_id = update.callback_query.from_user.id
+
+    logging.error(f'The update was: {update}')
+    logging.exception(traceback.print_exc())
+
+    return True

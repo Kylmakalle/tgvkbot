@@ -1,4 +1,4 @@
-from config import API_VERSION
+from config import API_VERSION, VK_APP_ID
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 from urllib.parse import urlencode
@@ -48,14 +48,15 @@ def set_env():
     while True:
         vk_app_id = input('VK APP ID: ')
         vk_app_id = vk_app_id.strip()
-        try:
-            get_auth_page(vk_app_id)
-            break
-        except HTTPError:
-            print('VK APP ID is invalid, try again!')
+        if vk_app_id:
+            try:
+                get_auth_page(vk_app_id)
+                break
+            except HTTPError:
+                print('VK APP ID is invalid, try again!')
 
     with open('env_file', 'w') as env_file:
-        env_file.write(ENV_FILE_TEMPLATE % {'tg_token': tg_token, 'vk_app_id': vk_app_id})
+        env_file.write(ENV_FILE_TEMPLATE % {'tg_token': tg_token, 'vk_app_id': vk_app_id or VK_APP_ID})
 
     print('Success!')
 
