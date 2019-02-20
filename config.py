@@ -32,7 +32,7 @@ VK_APP_ID = os.environ.get('VK_APP_ID', '2685278')  # Kate mobile
 
 AUDIO_URL = os.environ.get('AUDIO_URL', 'http://thatmusic.akentev.com/id/{owner_id}/{audio_id}')
 AUDIO_ACCESS_URL = os.environ.get('AUDIO_ACCESS_URL',
-                                  'http://thatmusic.akentev.com/access_id/{token}/{owner_id}/{audio_id}')
+                                  'http://thatmusic.akentev.com/access_id/{token}/{owner_id}/{audio_id}/{access_key}')
 TOKEN_REFRESH_URL = os.environ.get('TOKEN_REFRESH_URL', 'http://thatmusic.akentev.com/refresh')
 AUDIO_SEARCH_URL = os.environ.get('AUDIO_SEARCH_URL', 'https://thatmusic.akentev.com/search/')
 AUDIO_PROXY_URL = os.environ.get('AUDIO_PROXY_URL', 'https://thatmusic.akentev.com/proxy/')

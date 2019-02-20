@@ -802,14 +802,15 @@ async def process_attachment(attachment, token=None):
                     return {'content': audio, 'type': 'audio'}
             except:
                 pass
-
         if AUDIO_ACCESS_URL:
             if token:
                 try:
                     with aiohttp.ClientSession() as session:
                         r = await session.request('GET', AUDIO_ACCESS_URL.format(token=token,
                                                                                  owner_id=attachment[atype]['owner_id'],
-                                                                                 audio_id=attachment[atype]['id']))
+                                                                                 audio_id=attachment[atype]['id'],
+                                                                                 access_key=attachment[atype].get(
+                                                                                     'access_key', '')))
                         if r.status != 200:
                             raise Exception
                         audio = await r.read()
