@@ -75,8 +75,7 @@ async def get_max_photo(obj, keyword='photo'):
 async def get_content(url, docname='tgvkbot.document', chrome_headers=True, rewrite_name=False,
                       custom_ext=''):
     try:
-        with aiohttp.ClientSession(headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'} if chrome_headers else {}) as session:
+        with aiohttp.ClientSession(headers=CHROME_HEADERS if chrome_headers else {}) as session:
             r = await session.request('GET', url)
             direct_url = str(r.url)
             tempdir = tempfile.gettempdir()

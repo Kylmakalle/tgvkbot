@@ -34,17 +34,21 @@ AUDIO_URL = os.environ.get('AUDIO_URL', 'http://thatmusic.akentev.com/id/{owner_
 AUDIO_ACCESS_URL = os.environ.get('AUDIO_ACCESS_URL',
                                   'http://thatmusic.akentev.com/access_id/{token}/{owner_id}/{audio_id}')
 TOKEN_REFRESH_URL = os.environ.get('TOKEN_REFRESH_URL', 'http://thatmusic.akentev.com/refresh')
-
+AUDIO_SEARCH_URL = os.environ.get('AUDIO_SEARCH_URL', 'https://thatmusic.akentev.com/search/')
+AUDIO_PROXY_URL = os.environ.get('AUDIO_PROXY_URL', 'https://thatmusic.akentev.com/proxy/')
 AUDIO_HEADERS = {
     'user-agent': 'KateMobileAndroid/52.1 lite-445 (Android 4.4.2; SDK 19; x86; unknown Android SDK built for x86; en)'}
 
+CHROME_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'}
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 
 SETTINGS_VAR = os.environ.get('SETTINGS_VAR', 'DJANGO_TGVKBOT_SETTINGS_MODULE')
 
 MAX_FILE_SIZE = os.environ.get('MAX_FILE_SIZE', 52428800)
 
-API_VERSION = os.environ.get('API_VERSION', '5.78')
+API_VERSION = os.environ.get('API_VERSION', '5.71')
+AUDIO_API_VERSION = os.environ.get('API_VERSION', '5.78')
 
 # https://www.miniwebtool.com/django-secret-key-generator/
 # Возможно достаточно заглушки в стиле 'tgvkbot-super-secret-key(nope)'

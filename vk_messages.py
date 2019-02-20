@@ -4,6 +4,7 @@ from aiovk.longpoll import LongPoll
 
 from bot import *
 from aiogram.utils.markdown import quote_html, hlink
+import urllib
 
 log = logging.getLogger('vk_messages')
 inline_link_re = re.compile('\[([a-zA-Z0-9_]*)\|(.*?)\]', re.MULTILINE)
@@ -706,7 +707,11 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     elif attachment['type'] == 'audio':
                         await bot.send_chat_action(to_tg_chat, ChatActions.UPLOAD_DOCUMENT)
                         tg_message = await tgsend(bot.send_audio, to_tg_chat, audio=attachment['content'],
-                                                  reply_to_message_id=main_message, disable_notification=disable_notify)
+                                                  caption=attachment.get('caption', None),
+                                                  performer=attachment.get('artist', None),
+                                                  title=attachment.get('title', None),
+                                                  reply_to_message_id=main_message, disable_notification=disable_notify,
+                                                  parse_mode='HTML')
                     Message.objects.create(
                         vk_chat=vk_chat_id,
                         vk_id=vk_msg_id,
@@ -762,6 +767,19 @@ async def check_vk_url(url):
         return False
 
 
+def form_audio_title(data: dict, delimer=' '):
+    result = data.get('artist')
+    if result:
+        if 'title' in data:
+            result += delimer + data['title']
+    else:
+        if 'title' in data:
+            result = data['title']
+        else:
+            return
+    return result
+
+
 async def process_attachment(attachment, token=None):
     atype = attachment.get('type')
     if atype == 'photo':
@@ -769,6 +787,22 @@ async def process_attachment(attachment, token=None):
         return {'content': photo_url, 'type': 'photo'}
 
     elif atype == 'audio':
+        if attachment[atype].get('url') and AUDIO_PROXY_URL:
+            try:
+                with aiohttp.ClientSession() as session:
+                    r = await session.request('GET', AUDIO_PROXY_URL,
+                                              params={'url': urllib.parse.quote(attachment[atype]['url']),
+                                                      'artist': urllib.parse.quote(attachment[atype].get('artist', '')),
+                                                      'title': urllib.parse.quote(attachment[atype].get('title', ''))},
+                                              headers=CHROME_HEADERS)
+                    if r.status != 200:
+                        raise Exception
+                    audio = await r.read()
+                    audio = io.BytesIO(audio)
+                    return {'content': audio, 'type': 'audio'}
+            except:
+                pass
+
         if AUDIO_ACCESS_URL:
             if token:
                 try:
@@ -783,7 +817,7 @@ async def process_attachment(attachment, token=None):
                         return {'content': audio, 'type': 'audio'}
                 except:
                     pass
-        elif AUDIO_URL:
+        if AUDIO_URL:
             try:
                 with aiohttp.ClientSession() as session:
                     r = await session.request('GET', AUDIO_URL.format(owner_id=attachment[atype]['owner_id'],
@@ -793,6 +827,38 @@ async def process_attachment(attachment, token=None):
                     audio = await r.read()
                     audio = io.BytesIO(audio)
                     return {'content': audio, 'type': 'audio'}
+            except:
+                pass
+        if AUDIO_SEARCH_URL:
+            try:
+                search = form_audio_title(attachment[atype])
+                if not search:
+                    raise Exception
+                with aiohttp.ClientSession() as session:
+                    r = await session.request('GET', AUDIO_SEARCH_URL, params={'q': urllib.parse.quote(search)})
+                    if r.status != 200:
+                        raise Exception
+                    audios = await r.json()
+                    if audios['success'] and audios['data']:
+                        if attachment[atype]['duration']:
+                            audio = min(audios['data'],
+                                        key=lambda x: abs(x['duration'] - attachment[atype]['duration']))
+                        else:
+                            audio = audios['data'][0]
+                    else:
+                        raise Exception
+                    with aiohttp.ClientSession() as session:
+                        r = await session.request('GET', audio["download"])
+                        if r.status != 200:
+                            raise Exception
+                        audio = await r.read()
+                        audio = io.BytesIO(audio)
+                        # search = form_audio_title(attachment[atype], ' - ')
+                        # caption = '<i>🔍 {}</i>'.format(quote_html(search))
+                        caption = '🔍'
+                        return {'content': audio, 'type': 'audio', 'caption': caption,
+                                'artist': attachment[atype].get('artist', None),
+                                'title': attachment[atype].get('title', None)}
             except:
                 pass
 
