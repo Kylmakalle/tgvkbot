@@ -530,6 +530,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
     vk_msg_id = vk_msg_id or msg.msg_id
     user_id = user_id or msg.user_id
     known_users = known_users or {}
+    header_message = None
 
     vkuser = VkUser.objects.filter(token=token).first()
     if not vkuser:
@@ -725,7 +726,8 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                                           user_id=fwd_message['user_id'],
                                           forward_settings=forward_settings, vk_msg_id=vk_msg_id, vkchat=vkchat,
                                           full_msg={'items': [fwd_message]}, forwarded=True,
-                                          main_message=header_message.message_id, known_users=known_users)
+                                          main_message=header_message.message_id if header_message else None,
+                                          known_users=known_users)
 
 
 async def get_name(identifier, api):
@@ -1015,6 +1017,9 @@ async def vk_polling(vkuser: VkUser):
             break
         except aiohttp.client_exceptions.ServerDisconnectedError:
             log.warning('Longpoll server disconnected id: ' + str(vkuser.pk))
+        except VkAPIError:
+            # Invalid/Inaccessible token
+            pass
         except Exception:
             log.exception(msg='Error in longpolling', exc_info=True)
             asyncio.sleep(5)
