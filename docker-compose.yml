@@ -10,6 +10,10 @@ services:
     networks:
       - db_nw
   tgbot:
+    logging:
+      options:
+        max-size: "10M"
+        max-file: "10"
     build: .
     volumes:
       - .:/src
