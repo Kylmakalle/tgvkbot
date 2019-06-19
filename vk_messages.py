@@ -872,7 +872,7 @@ async def process_attachment(attachment, token=None):
         owner_id = attachment[atype]['owner_id']
         video_id = attachment[atype]['id']
         access_key = attachment[atype].get('access_key')
-        video_url = f'https://vk.com/video{owner_id}_{video_id}' + f'_{access_key}' if access_key else ''
+        video_url = f'https://vk.com/im?z=video{owner_id}_{video_id}' + f'/{access_key}' if access_key else ''
         return {'content': f'<i>🎥 Видеозапись</i> <a href="{video_url}">{title}</a>', 'type': 'text'}
 
     elif atype == 'doc':
