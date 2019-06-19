@@ -2,6 +2,7 @@ from aiogram import types
 from aiogram.bot.api import FILE_URL
 from aiogram.dispatcher.webhook import get_new_configured_app
 from aiohttp import web
+from aiohttp.client_exceptions import ContentTypeError
 
 from bot import *
 from config import *
@@ -77,6 +78,16 @@ async def vk_sender(token, tg_message, **kwargs):
     try:
         api = API(session)
         vk_msg_id = await api('messages.send', **kwargs)
+    except ContentTypeError:
+        kwargs['v'] = session.API_VERSION
+        kwargs['access_token'] = session.access_token
+        try:
+            url, html = await session.driver.post_text(url=session.REQUEST_URL + 'messages.send', data=kwargs)
+            response = ujson.loads(html)
+            vk_msg_id = response['response']
+        except:
+            log.exception(msg='Error in vk sender', exc_info=True)
+            return None
     except VkAuthError:
         vk_user = VkUser.objects.filter(token=token).first()
         if vk_user:
