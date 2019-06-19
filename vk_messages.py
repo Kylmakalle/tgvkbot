@@ -988,10 +988,10 @@ async def process_attachment(attachment, token=None):
 
 
 async def vk_polling(vkuser: VkUser):
+    log.warning('Starting polling for: id ' + str(vkuser.pk))
     while True:
         try:
             session = VkSession(access_token=vkuser.token, driver=await get_driver(vkuser.token))
-            log.warning('Starting polling for: id ' + str(vkuser.pk))
             api = API(session)
             lp = LongPoll(session, mode=10, version=4)
             while VkUser.objects.filter(token=vkuser.token, is_polling=True).exists():
