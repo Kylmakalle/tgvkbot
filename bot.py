@@ -113,7 +113,6 @@ async def all_errors_handler(dp, update, e):
         user = update.callback_query.from_user.full_name
         user_id = update.callback_query.from_user.id
 
-    logging.error(f'The update was: {update}')
-    logging.exception(traceback.print_exc())
+    logging.exception(f'The update was: {ujson.dumps(update.to_python(), indent=4)}', exc_info=True)
 
     return True
