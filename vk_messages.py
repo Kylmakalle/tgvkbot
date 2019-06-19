@@ -578,7 +578,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 if forwarded or not is_multichat:
                     header = f'<b>{name}</b>' + '\n'
                 elif is_multichat:
-                    header = f'<b>{name} @ {vk_msg["title"]}</b>' + '\n'
+                    header = f'<b>{name} @ {quote_html(vk_msg["title"])}</b>' + '\n'
                 to_tg_chat = vkuser.owner.uid
 
             body_parts = []
