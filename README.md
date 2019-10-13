@@ -1,5 +1,5 @@
 # tgvkbot
-Send and recieve VK messages in telegram.
+Send and receive VK messages in telegram.
 
 # Установка (Ubuntu 16.04)
 ```
