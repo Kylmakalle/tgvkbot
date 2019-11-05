@@ -140,7 +140,7 @@ async def generate_send_options(msg, forward=None, forward_messages_exists=False
 async def send_vk_action(token, peer_id, action='typing'):
     vksession = VkSession(access_token=token, driver=await get_driver(token))
     api = API(vksession)
-    return await api('messages.setActivity', peer_id=peer_id, activity=action)
+    return  # await api('messages.setActivity', peer_id=peer_id, activity=action)
 
 
 async def upload_attachment(msg, vk_user, file_id, peer_id, attachment_type, upload_field, upload_method,
