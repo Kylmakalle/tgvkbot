@@ -524,7 +524,8 @@ async def process_longpoll_event(api, new_event):
 
 async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, user_id=None, forward_settings=None,
                           vkchat=None,
-                          full_msg=None, forwarded=False, vk_msg_id=None, main_message=None, known_users=None):
+                          full_msg=None, forwarded=False, vk_msg_id=None, main_message=None, known_users=None,
+                          force_disable_notify=None):
     token = token or msg.api._session.access_token
     is_multichat = is_multichat or msg.is_multichat
     vk_msg_id = vk_msg_id or msg.msg_id
@@ -554,7 +555,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
     full_msg = full_msg or await msg.api('messages.getById', message_ids=', '.join(str(x) for x in [vk_msg_id]))
     if full_msg.get('items'):
         for vk_msg in full_msg['items']:
-            disable_notify = bool(vk_msg.get('push_settings', False))
+            disable_notify = force_disable_notify or bool(vk_msg.get('push_settings', False))
             attaches_scheme = []
             if vk_msg.get('attachments'):
                 attaches_scheme = [await process_attachment(attachment, token) for attachment in
@@ -727,7 +728,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                                           forward_settings=forward_settings, vk_msg_id=vk_msg_id, vkchat=vkchat,
                                           full_msg={'items': [fwd_message]}, forwarded=True,
                                           main_message=header_message.message_id if header_message else None,
-                                          known_users=known_users)
+                                          known_users=known_users, force_disable_notify=disable_notify)
 
 
 async def get_name(identifier, api):
