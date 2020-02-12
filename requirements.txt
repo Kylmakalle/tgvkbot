@@ -6,7 +6,7 @@ attrs==17.4.0
 Babel==2.5.3
 certifi==2018.1.18
 chardet==3.0.4
-Django==2.0.4
+Django==2.2.10
 idna==2.6
 idna-ssl==1.0.1
 multidict==4.1.0
