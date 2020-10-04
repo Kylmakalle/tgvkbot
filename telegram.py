@@ -928,9 +928,10 @@ async def handle_new_group(msg: types.Message):
     await handle_join(msg)
 
 
-@dp.message_handler(func=lambda msg: msg.migrate_to_chat_id is not None)
+@dp.message_handler(content_types=types.ContentType.ANY, func=lambda message: message.migrate_to_chat_id)
 async def handle_chat_migration(msg: types.Message):
-    forwards = Forward.objects.filter(tgchat__cid=msg.migrate_from_chat_id)
+    # Юзеру сначала нужно выбрать чат для привязки, а уже ПОТОМ делать миграцию. Иначе старый chatid останется на иналйнкнопках
+    forwards = Forward.objects.filter(tgchat__cid=msg.chat.id)
     for forward in forwards:
         forward.tgchat.cid = msg.migrate_to_chat_id
         forward.tgchat.save()
