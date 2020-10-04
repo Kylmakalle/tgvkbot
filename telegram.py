@@ -557,7 +557,7 @@ async def send_welcome(msg: types.Message):
         if not existing_vkuser:
             link = 'https://oauth.vk.com/authorize?client_id={}&' \
                    'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video,stories,audio' \
-                   '&response_type=token&v={}'.format(VK_APP_ID, AUDIO_API_VERSION)
+                   '&response_type=token&v={}'.format(VK_APP_ID, API_VERSION)
             mark = InlineKeyboardMarkup()
             login = InlineKeyboardButton('ВХОД', url=link)
             mark.add(login)
