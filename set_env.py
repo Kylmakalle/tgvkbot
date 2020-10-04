@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 ENV_FILE_TEMPLATE = """
 POSTGRES_DB=tgvkbot
+POSTGRES_PASSWORD=postgres
 BOT_TOKEN=%(tg_token)s
 VK_APP_ID=%(vk_app_id)s
 """

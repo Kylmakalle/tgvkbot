@@ -192,7 +192,10 @@ async def upload_attachment(msg, vk_user, file_id, peer_id, attachment_type, upl
                 file_on_server = ujson.loads(await upload.text())
         if msg.content_type != 'sticker':
             content['content'].close()
-            os.remove(os.path.join(content['temp_path'], content['file_name'] + content['custom_ext']))
+            try:
+                os.remove(os.path.join(content['temp_path'], content['file_name'] + content['custom_ext']))
+            except:
+                pass
         if attachment_type == 'photo':
             save_options = {'server': file_on_server['server'], on_server_field: file_on_server[on_server_field],
                             'hash': file_on_server['hash']}
@@ -452,7 +455,10 @@ async def set_info(call: types.CallbackQuery):
                 content = await get_content(dialog_info['photo'])
                 await bot.set_chat_photo(call.message.chat.id, content['content'])
                 content['content'].close()
-                os.remove(os.path.join(content['temp_path'], content['file_name'] + content['custom_ext']))
+                try:
+                    os.remove(os.path.join(content['temp_path'], content['file_name'] + content['custom_ext']))
+                except:
+                    pass
 
             if dialog_info['type'] == 'user':
                 dialog_info = await get_dialog_info(api, vk_chat_id, name_case='ins')
