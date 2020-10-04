@@ -991,7 +991,7 @@ async def process_attachment(attachment, token=None):
             link_name = link_name[:200] + '...'
         photo_content = ''
         if 'photo' in attachment[atype]:
-            photo_url = attachment[atype]['photo'][await get_max_photo(attachment[atype]['photo'])]
+            photo_url = attachment[atype]['photo']['sizes'][-1]['url']
             photo_name = attachment[atype]['photo'].get('text', '&#8203;')
             if not photo_name:
                 photo_name = '&#8203;'
@@ -1019,7 +1019,7 @@ async def process_attachment(attachment, token=None):
         market_album_url = f'https://vk.com/market{attachment[atype]["owner_id"]}?section=album_{attachment[atype]["id"]}'
         photo_content = ''
         if attachment[atype].get('photo'):
-            photo_url = attachment[atype]['photo'][await get_max_photo(attachment[atype])]
+            photo_url = attachment[atype]['photo']['sizes'][-1]['url']
             photo_content = f'<a href="{photo_url or ""}">&#8203;</a>'
         title = f'<a href="{market_album_url}">{attachment[atype].get("title", "") or "🛒 Подборка Товаров"}</a>'
         count = f'\n<i>Число товаров:</i> {attachment[atype]["count"]}'
