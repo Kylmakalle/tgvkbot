@@ -1,7 +1,6 @@
 from aiogram import types
 from aiogram.bot.api import FILE_URL
-from aiogram.dispatcher.webhook import get_new_configured_app
-from aiohttp import web
+from aiogram.utils import executor
 from aiohttp.client_exceptions import ContentTypeError
 
 from bot import *
@@ -73,8 +72,16 @@ async def is_bot_in_iterator(msg: types.Message):
     return False
 
 
+import secrets
+
+
+def generate_random_id():
+    return secrets.randbelow(2_147_483_647)
+
+
 async def vk_sender(token, tg_message, **kwargs):
     session = VkSession(access_token=token, driver=await get_driver(token))
+    kwargs['random_id'] = generate_random_id()
     try:
         api = API(session)
         vk_msg_id = await api('messages.send', **kwargs)
@@ -199,10 +206,12 @@ async def upload_attachment(msg, vk_user, file_id, peer_id, attachment_type, upl
             save_options = dict({'file': file_on_server['file']})
             save_options['title'] = title
         attachment = await api(save_method, **save_options)
-        return f'{attachment_type}{attachment[0]["owner_id"]}_{attachment[0]["id"]}'
+        return f'{attachment_type}{attachment[attachment["type"]]["owner_id"]}_{attachment[attachment["type"]]["id"]}'
 
 
-async def get_dialogs(token, exclude=list()):
+async def get_dialogs(token, exclude=None):
+    if not exclude:
+        exclude = []
     session = VkSession(access_token=token, driver=await get_driver(token))
     api = API(session)
     dialogs = await api('messages.getDialogs', count=200)
@@ -491,6 +500,7 @@ async def choose_chat(call: types.CallbackQuery):
                 tg_id=tg_message.message_id,
                 vk_chat=vk_chat_id
             )
+            await bot.answer_callback_query(call.id)
         else:
             forward = Forward.objects.filter(tgchat=tgchat).first()
             vkchat = (await get_vk_chat(int(vk_chat_id)))[0]
@@ -787,6 +797,8 @@ async def handle_documents(msg: types.Message):
                 upload_attachment_options['upload_type'] = 'audio_message'
 
             if msg.content_type == 'sticker':
+                if msg.sticker.to_python()['is_animated']:
+                    file_id = msg.sticker.thumb.file_id
                 upload_attachment_options['upload_type'] = 'graffiti'
                 upload_attachment_options['rewrite_name'] = True
                 upload_attachment_options['default_name'] = 'graffiti.png'
@@ -914,15 +926,8 @@ async def handle_chat_migration(msg: types.Message):
         forward.tgchat.save()
 
 
-async def on_startup(app):
-    # Set new URL for webhook
-    await bot.set_webhook(WEBHOOK_URL, certificate=open(WEBHOOK_SSL_CERT, 'rb'))
-
-
 if __name__ == '__main__':
     TASKS = vk_polling_tasks()
     asyncio.gather(*[task['task'] for task in TASKS])
-    app = get_new_configured_app(dispatcher=dp, path=WEBHOOK_URL_PATH)
-    app.on_startup.append(on_startup)
 
-    web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT)
+    executor.start_polling(dp)

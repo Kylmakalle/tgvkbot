@@ -1,10 +1,10 @@
+import urllib
 from concurrent.futures._base import CancelledError, TimeoutError
 
+from aiogram.utils.markdown import quote_html, hlink
 from aiovk.longpoll import LongPoll
 
 from bot import *
-from aiogram.utils.markdown import quote_html, hlink
-import urllib
 
 log = logging.getLogger('vk_messages')
 inline_link_re = re.compile('\[([a-zA-Z0-9_]*)\|(.*?)\]', re.MULTILINE)
@@ -102,7 +102,7 @@ class MessageEventData(object):
 
         data.user_id = int(obj['user_id'])
         data.true_user_id = int(obj['user_id'])
-        data.full_text = obj['body']
+        data.full_text = obj['text']
         data.time = int(obj['date'])
         data.is_out = obj.get('out', False)
         data.is_forwarded = False
@@ -525,7 +525,7 @@ async def process_longpoll_event(api, new_event):
 async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, user_id=None, forward_settings=None,
                           vkchat=None,
                           full_msg=None, forwarded=False, vk_msg_id=None, main_message=None, known_users=None,
-                          force_disable_notify=None):
+                          force_disable_notify=None, full_chat=None):
     token = token or msg.api._session.access_token
     is_multichat = is_multichat or msg.is_multichat
     vk_msg_id = vk_msg_id or msg.msg_id
@@ -553,6 +553,10 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
     forward_setting = forward_settings or Forward.objects.filter(owner=vkuser.owner, vkchat=vkchat).first()
 
     full_msg = full_msg or await msg.api('messages.getById', message_ids=', '.join(str(x) for x in [vk_msg_id]))
+
+    # Узнаем title чата
+    if is_multichat:
+        full_chat = await msg.api('messages.getChat', chat_id=vk_chat_id - 2000000000)
     if full_msg.get('items'):
         for vk_msg in full_msg['items']:
             disable_notify = force_disable_notify or bool(vk_msg.get('push_settings', False))
@@ -579,11 +583,11 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 if forwarded or not is_multichat:
                     header = f'<b>{name}</b>' + '\n'
                 elif is_multichat:
-                    header = f'<b>{name} @ {quote_html(vk_msg["title"])}</b>' + '\n'
+                    header = f'<b>{name} @ {quote_html(full_chat["title"])}</b>' + '\n'
                 to_tg_chat = vkuser.owner.uid
 
             body_parts = []
-            body = quote_html(vk_msg.get('body', ''))
+            body = quote_html(vk_msg.get('text', ''))
 
             if body:
                 if (len(header) + len(body)) > MAX_MESSAGE_LENGTH:
@@ -601,6 +605,14 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     else:
                         body += first_text_attach['content']
                     attaches_scheme.remove(first_text_attach)
+
+                first_voice_attach = next(
+                    (attach for attach in attaches_scheme if attach and attach['type'] == 'audio_message'),
+                    None)
+                if first_voice_attach:
+                    # Будем отправлять только те войсы, в которых завершен транскрипт сообщений
+                    if first_voice_attach.get('transcript_state') != 'done':
+                        return
 
             if body_parts:
                 for body_part in range(len(body_parts)):
@@ -687,9 +699,17 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                                                   attachment.get('content', '') or attachment.get('url'),
                                                   reply_to_message_id=main_message, disable_notification=disable_notify)
                         if 'content' in attachment:
-                            attachment['content'].close()
-                            os.remove(os.path.join(attachment['temp_path'],
-                                                   attachment['file_name'] + attachment['custom_ext']))
+                            try:
+                                # Иногда тут появляется url, лень проверять откуда растут ноги
+                                attachment['content'].close()
+                            except:
+                                pass
+                            try:
+                                # Тут вообще не оч понятно, почему не удаляет
+                                os.remove(os.path.join(attachment['temp_path'],
+                                                       attachment['file_name'] + attachment['custom_ext']))
+                            except:
+                                pass
                     elif attachment['type'] == 'video':
                         await bot.send_chat_action(to_tg_chat, ChatActions.UPLOAD_VIDEO)
                         tg_message = await tgsend(bot.send_video, to_tg_chat, attachment['content'],
@@ -714,6 +734,22 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                                                   title=attachment.get('title', None),
                                                   reply_to_message_id=main_message, disable_notification=disable_notify,
                                                   parse_mode='HTML')
+                    elif attachment['type'] == 'audio_message':
+                        await bot.send_chat_action(to_tg_chat, ChatActions.RECORD_AUDIO)
+                        tg_message = await tgsend(bot.send_voice, to_tg_chat, voice=attachment['content'])
+
+                        if attachment.get('transcript'):
+                            transcript_text = '<i>Войс:</i> ' + attachment['transcript']
+                            transcript_message = await tgsend(bot.send_message, to_tg_chat, text=transcript_text,
+                                                              reply_to_message_id=tg_message.message_id,
+                                                              parse_mode=ParseMode.HTML)
+                            Message.objects.create(
+                                vk_chat=vk_chat_id,
+                                vk_id=vk_msg_id,
+                                tg_chat=transcript_message.chat.id,
+                                tg_id=transcript_message.message_id
+                            )
+
                     Message.objects.create(
                         vk_chat=vk_chat_id,
                         vk_id=vk_msg_id,
@@ -724,7 +760,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                 for fwd_message in vk_msg['fwd_messages']:
                     await process_message(msg, token=token, is_multichat=is_multichat, vk_chat_id=vk_chat_id,
-                                          user_id=fwd_message['user_id'],
+                                          user_id=fwd_message['from_id'],
                                           forward_settings=forward_settings, vk_msg_id=vk_msg_id, vkchat=vkchat,
                                           full_msg={'items': [fwd_message]}, forwarded=True,
                                           main_message=header_message.message_id if header_message else None,
@@ -749,7 +785,7 @@ async def tgsend(method, *args, **kwargs):
         tg_message = await method(*args, **kwargs)
         return tg_message
     except RetryAfter as e:
-        asyncio.sleep(e.timeout)
+        await asyncio.sleep(e.timeout)
         await tgsend(method, *args, **kwargs)
     except Exception:
         log.exception(msg='Error in message sending', exc_info=True)
@@ -786,8 +822,18 @@ def form_audio_title(data: dict, delimer=' '):
 async def process_attachment(attachment, token=None):
     atype = attachment.get('type')
     if atype == 'photo':
-        photo_url = attachment[atype][await get_max_photo(attachment[atype])]
+        photo_url = attachment[atype]['sizes'][-1]['url']
         return {'content': photo_url, 'type': 'photo'}
+
+    elif atype == 'audio_message':
+        voice_url = attachment[atype]['link_ogg']
+
+        res = {'content': voice_url, 'type': 'audio_message'}
+        if attachment[atype].get('transcript'):
+            res['transcript'] = attachment[atype]['transcript']
+        if attachment[atype].get('transcript_state'):
+            res['transcript_state'] = attachment[atype]['transcript_state']
+        return res
 
     elif atype == 'audio':
         if attachment[atype].get('url') and AUDIO_PROXY_URL:
@@ -884,15 +930,15 @@ async def process_attachment(attachment, token=None):
             if size > MAX_FILE_SIZE:
                 return {'content': f'<a href="{gif_url}">GIF</a>', 'type': 'text'}
             return {'content': gif_url, 'type': 'document'}
-        elif 'preview' in attachment[atype] and attachment[atype]['preview'].get('graffiti'):
-            graffiti_url = attachment[atype]['preview']['photo']['sizes'][-1]['src']
-            with aiohttp.ClientSession() as session:
-                img = await (await session.request('GET', graffiti_url)).read()
-            imgdata = Image.open(io.BytesIO(img))
-            webp = io.BytesIO()
-            imgdata.save(webp, format='WebP')
-            file_bytes = webp.getvalue()
-            return {'content': file_bytes, 'type': 'sticker'}
+        # elif 'preview' in attachment[atype] and attachment[atype]['preview'].get('graffiti'):
+        #     graffiti_url = attachment[atype]['preview']['photo']['sizes'][-1]['src']
+        #     with aiohttp.ClientSession() as session:
+        #         img = await (await session.request('GET', graffiti_url)).read()
+        #     imgdata = Image.open(io.BytesIO(img))
+        #     webp = io.BytesIO()
+        #     imgdata.save(webp, format='WebP')
+        #     file_bytes = webp.getvalue()
+        #     return {'content': file_bytes, 'type': 'sticker'}
         else:
             size = attachment[atype]['size']
             doc_url = attachment[atype]['url']  # + f'&{ext}=1'
@@ -907,8 +953,18 @@ async def process_attachment(attachment, token=None):
             else:
                 return {'content': f'<a href="{doc_url}">📄 {content["docname"]}</a>', 'type': 'text'}
 
+    elif atype == 'graffiti':
+        graffiti_url = attachment[atype]['url']
+        with aiohttp.ClientSession() as session:
+            img = await (await session.request('GET', graffiti_url)).read()
+        imgdata = Image.open(io.BytesIO(img))
+        webp = io.BytesIO()
+        imgdata.save(webp, format='WebP')
+        file_bytes = webp.getvalue()
+        return {'content': file_bytes, 'type': 'sticker'}
+
     elif atype == 'sticker':
-        sticker_url = attachment[atype][await get_max_photo(attachment[atype])]
+        sticker_url = attachment[atype]['images'][-1]['url']
         with aiohttp.ClientSession() as session:
             img = await (await session.request('GET', sticker_url)).read()
         imgdata = Image.open(io.BytesIO(img))
@@ -1004,7 +1060,7 @@ async def vk_polling(vkuser: VkUser):
             break
         except VkLongPollError:
             log.error('Longpoll error! {}'.format(vkuser.pk))
-            asyncio.sleep(5)
+            await asyncio.sleep(5)
         except VkAuthError:
             log.error('Auth Error! {}'.format(vkuser.pk))
             vkuser.is_polling = False
@@ -1012,7 +1068,7 @@ async def vk_polling(vkuser: VkUser):
             break
         except TimeoutError:
             log.warning('Polling timeout')
-            asyncio.sleep(5)
+            await asyncio.sleep(5)
         except CancelledError:
             log.warning('Stopped polling for id: ' + str(vkuser.pk))
             break
@@ -1023,7 +1079,7 @@ async def vk_polling(vkuser: VkUser):
             pass
         except Exception:
             log.exception(msg='Error in longpolling', exc_info=True)
-            asyncio.sleep(5)
+            await asyncio.sleep(5)
 
 
 def vk_polling_tasks():

@@ -6,3 +6,4 @@ config.py
 *.pem
 env_file
 openssl_config
+venv/
