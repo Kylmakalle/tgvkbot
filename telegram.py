@@ -209,7 +209,11 @@ async def upload_attachment(msg, vk_user, file_id, peer_id, attachment_type, upl
             save_options = dict({'file': file_on_server['file']})
             save_options['title'] = title
         attachment = await api(save_method, **save_options)
-        return f'{attachment_type}{attachment[attachment["type"]]["owner_id"]}_{attachment[attachment["type"]]["id"]}'
+        if 'type' not in attachment:
+            attachment = attachment[0]
+        else:
+            attachment = attachment[attachment['type']]
+        return f'{attachment_type}{attachment["owner_id"]}_{attachment["id"]}'
 
 
 async def get_dialogs(token, exclude=None):
