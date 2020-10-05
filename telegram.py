@@ -529,8 +529,6 @@ async def choose_chat(call: types.CallbackQuery):
             if call.message.chat.type == 'group':
                 text += '\n<b>Внимание!</b> Параметр <i>"All Members Are Administrators"</i> должен быть отключён и боту должна быть присвоена админка в отдельном порядке!'
             try:
-                if call.message.chat.type == 'group':
-                    markup = None
                 await bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup,
                                             parse_mode=ParseMode.HTML)
             except MessageNotModified:
@@ -940,7 +938,8 @@ async def handle_chat_migration(msg: types.Message):
 
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton('Установить аватар и название', callback_data=f'setinfo{forward.vkchat.cid}'))
-        await bot.send_message(msg.migrate_to_chat_id, text='Отлично! Теперь можно установить аватар и название',
+        await bot.send_message(msg.migrate_to_chat_id,
+                               text='Отлично! Теперь можно установить аватар и название. Если кнопка выше не работает, то воспользуйтесь этой.',
                                reply_markup=markup)
 
 
