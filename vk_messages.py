@@ -586,6 +586,18 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     header = f'<b>{name} @ {quote_html(full_chat["title"])}</b>' + '\n'
                 to_tg_chat = vkuser.owner.uid
 
+            # Логика реплая на сообщение, которое уже есть в чате
+            # Таким кейсом нельзя управлять. Может упасть
+            if not main_message:
+                if vk_msg.get('reply_message'):
+                    reply_msg_in_db = Message.objects.filter(
+                        vk_chat=vk_chat_id,
+                        vk_id=vk_msg['reply_message']['id'],
+                        tg_chat=to_tg_chat
+                    ).first()
+                    if reply_msg_in_db:
+                        main_message = reply_msg_in_db.tg_id
+
             body_parts = []
             body = quote_html(vk_msg.get('text', ''))
 
@@ -760,12 +772,32 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
             if vk_msg.get('fwd_messages'):
                 await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                 for fwd_message in vk_msg['fwd_messages']:
-                    await process_message(msg, token=token, is_multichat=is_multichat, vk_chat_id=vk_chat_id,
-                                          user_id=fwd_message['from_id'],
-                                          forward_settings=forward_settings, vk_msg_id=vk_msg_id, vkchat=vkchat,
-                                          full_msg={'items': [fwd_message]}, forwarded=True,
-                                          main_message=header_message.message_id if header_message else None,
-                                          known_users=known_users, force_disable_notify=disable_notify)
+                    fwd_msgs_in_db = Message.objects.filter(
+                        vk_chat=vk_chat_id,
+                        vk_id=fwd_message['id'],
+                        tg_chat=to_tg_chat
+                    )
+                    if fwd_msgs_in_db:
+                        for fwd_msg_in_db in fwd_msgs_in_db:
+                            try:
+                                await bot.forward_message(to_tg_chat, to_tg_chat, fwd_msg_in_db.tg_id,
+                                                          disable_notification=disable_notify)
+                            except:
+                                await process_message(msg, token=token, is_multichat=is_multichat,
+                                                      vk_chat_id=vk_chat_id,
+                                                      user_id=fwd_message['from_id'],
+                                                      forward_settings=forward_settings, vk_msg_id=vk_msg_id,
+                                                      vkchat=vkchat,
+                                                      full_msg={'items': [fwd_message]}, forwarded=True,
+                                                      main_message=header_message.message_id if header_message else None,
+                                                      known_users=known_users, force_disable_notify=disable_notify)
+                    else:
+                        await process_message(msg, token=token, is_multichat=is_multichat, vk_chat_id=vk_chat_id,
+                                              user_id=fwd_message['from_id'],
+                                              forward_settings=forward_settings, vk_msg_id=vk_msg_id, vkchat=vkchat,
+                                              full_msg={'items': [fwd_message]}, forwarded=True,
+                                              main_message=header_message.message_id if header_message else None,
+                                              known_users=known_users, force_disable_notify=disable_notify)
 
 
 async def get_name(identifier, api):
