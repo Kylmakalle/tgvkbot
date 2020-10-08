@@ -606,13 +606,14 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                         body += first_text_attach['content']
                     attaches_scheme.remove(first_text_attach)
 
-                first_voice_attach = next(
-                    (attach for attach in attaches_scheme if attach and attach['type'] == 'audio_message'),
-                    None)
-                if first_voice_attach:
-                    # Будем отправлять только те войсы, в которых завершен транскрипт сообщений
-                    if first_voice_attach.get('transcript_state') != 'done':
-                        return
+                # ТК у некоторых войсов транскрипт не происходит, то мы можем их потерять. Так делать больше не будем.
+                # first_voice_attach = next(
+                #     (attach for attach in attaches_scheme if attach and attach['type'] == 'audio_message'),
+                #     None)
+                # if first_voice_attach:
+                #     # Будем отправлять только те войсы, в которых завершен транскрипт сообщений
+                #     if first_voice_attach.get('transcript_state') != 'done':
+                #         return
 
             if body_parts:
                 for body_part in range(len(body_parts)):
@@ -830,9 +831,7 @@ async def process_attachment(attachment, token=None):
 
         res = {'content': voice_url, 'type': 'audio_message'}
         if attachment[atype].get('transcript'):
-            res['transcript'] = attachment[atype]['transcript']
-        if attachment[atype].get('transcript_state'):
-            res['transcript_state'] = attachment[atype]['transcript_state']
+            return {'content': f'<i>Войс:</i>{atype[atype]["transcript"]}', 'type': 'text'}
         return res
 
     elif atype == 'audio':
@@ -925,7 +924,7 @@ async def process_attachment(attachment, token=None):
     elif atype == 'doc':
         ext = attachment[atype]['ext']
         if ext == 'gif':
-            size = attachment[atype]['preview']['video']['file_size']
+            size = attachment[atype]['file_size']
             gif_url = attachment[atype]['url'] + '&mp4=1'
             if size > MAX_FILE_SIZE:
                 return {'content': f'<a href="{gif_url}">GIF</a>', 'type': 'text'}
