@@ -755,7 +755,7 @@ async def handle_contact(msg: types.Message):
     await handle_text(msg)
 
 
-@dp.message_handler(content_types=['photo'])
+@dp.message_handler(content_types=['photo', 'sticker'])
 async def handle_photo(msg: types.Message):
     user, user_created = await update_user_info(msg.from_user)
     tgchat, tgchat_created = await update_chat_info(msg.chat)
@@ -764,7 +764,13 @@ async def handle_photo(msg: types.Message):
         forward = Forward.objects.filter(tgchat=tgchat).first()
         forward_messages_exists, message = await is_forwarding(msg.caption)
         message_options = await generate_send_options(msg, forward, forward_messages_exists, message)
-        file_id = msg.photo[-1].file_id
+        if msg.content_type == 'photo':
+            file_id = msg.photo[-1].file_id
+        elif msg.content_type == 'sticker':
+            if msg.sticker.to_python()['is_animated']:
+                file_id = msg.sticker.thumb.file_id
+            else:
+                file_id = msg.sticker.file_id
         if message_options:
             message_options['attachment'] = await upload_attachment(msg, vk_user, file_id, message_options['peer_id'],
                                                                     attachment_type='photo',
@@ -780,7 +786,7 @@ async def handle_photo(msg: types.Message):
                 await msg.reply('<b>Ошибка при загрузке файла. Сообщение не отправлено!</b>', parse_mode=ParseMode.HTML)
 
 
-@dp.message_handler(content_types=['document', 'voice', 'audio', 'sticker'])
+@dp.message_handler(content_types=['document', 'voice', 'audio'])
 async def handle_documents(msg: types.Message):
     user, user_created = await update_user_info(msg.from_user)
     tgchat, tgchat_created = await update_chat_info(msg.chat)
@@ -807,12 +813,13 @@ async def handle_documents(msg: types.Message):
             if msg.content_type == 'voice':
                 upload_attachment_options['upload_type'] = 'audio_message'
 
-            if msg.content_type == 'sticker':
-                if msg.sticker.to_python()['is_animated']:
-                    file_id = msg.sticker.thumb.file_id
-                upload_attachment_options['upload_type'] = 'graffiti'
-                upload_attachment_options['rewrite_name'] = True
-                upload_attachment_options['default_name'] = 'graffiti.png'
+            # https://vk.com/wall-1_395554
+            # if msg.content_type == 'sticker':
+            #     if msg.sticker.to_python()['is_animated']:
+            #         file_id = msg.sticker.thumb.file_id
+            #     upload_attachment_options['upload_type'] = 'graffiti'
+            #     upload_attachment_options['rewrite_name'] = True
+            #     upload_attachment_options['default_name'] = 'graffiti.png'
 
             if msg.content_type == 'audio':
                 audioname = ''
