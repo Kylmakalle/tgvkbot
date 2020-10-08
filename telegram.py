@@ -1,13 +1,14 @@
 from aiogram import types
 from aiogram.bot.api import FILE_URL
-from aiogram.utils import executor
+from aiogram.utils import executor, json
 from aiohttp.client_exceptions import ContentTypeError
 
 from bot import *
 from config import *
 from vk_messages import vk_polling_tasks, vk_polling
 
-log = logging.getLogger('telegram')
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 oauth_link = re.compile(
     'https://(oauth|api)\.vk\.com/blank\.html#access_token=([a-z0-9]*)&expires_in=[0-9]*&user_id=[0-9]*')
@@ -90,7 +91,7 @@ async def vk_sender(token, tg_message, **kwargs):
         kwargs['access_token'] = session.access_token
         try:
             url, html = await session.driver.post_text(url=session.REQUEST_URL + 'messages.send', data=kwargs)
-            response = ujson.loads(html)
+            response = json.loads(html)
             vk_msg_id = response['response']
         except:
             log.exception(msg='Error in vk sender', exc_info=True)
@@ -189,7 +190,7 @@ async def upload_attachment(msg, vk_user, file_id, peer_id, attachment_type, upl
                 field_data['filename'] = filename
             data.add_field(upload_field, content['content'], content_type='multipart/form-data', **field_data)
             async with session.post(upload_server['upload_url'], data=data) as upload:
-                file_on_server = ujson.loads(await upload.text())
+                file_on_server = json.loads(await upload.text())
         if msg.content_type != 'sticker':
             content['content'].close()
             try:
@@ -338,7 +339,7 @@ async def page_switcher(call: types.CallbackQuery):
         message_id=call.message.message_id,
     ).first()
     if message_markup:
-        pages = ujson.loads(message_markup.buttons)
+        pages = json.loads(message_markup.buttons)
         markup = InlineKeyboardMarkup()
         for row in pages[page]:
             markup.row(*[InlineKeyboardButton(**button) for button in row])
@@ -408,7 +409,7 @@ async def delete_forward(call: types.CallbackQuery):
         chat_id=call.message.chat.id
     ).first()
 
-    buttons = ujson.loads(message_markup.buttons)
+    buttons = json.loads(message_markup.buttons)
 
     for row in buttons:
         if row[1]['callback_data'] == call.data:
@@ -417,7 +418,7 @@ async def delete_forward(call: types.CallbackQuery):
             markup.row(*[InlineKeyboardButton(**button) for button in row])
     if message_markup:
         if buttons:
-            message_markup.buttons = ujson.dumps(buttons)
+            message_markup.buttons = json.dumps(buttons)
             message_markup.save()
             await bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
         else:
@@ -670,7 +671,7 @@ async def chat_command(msg: types.Message):
             MessageMarkup.objects.create(
                 message_id=msg_with_markup.message_id,
                 chat_id=msg_with_markup.chat.id,
-                buttons=ujson.dumps(markup.inline_keyboard)
+                buttons=json.dumps(markup.inline_keyboard)
             )
         else:
             await bot.send_message(msg.chat.id,
@@ -919,7 +920,7 @@ async def handle_join(msg: types.Message, edit=False, chat_id=None, message_id=N
         MessageMarkup.objects.create(
             message_id=msg_with_markup.message_id,
             chat_id=msg_with_markup.chat.id,
-            buttons=ujson.dumps(pages)
+            buttons=json.dumps(pages)
         )
 
 
