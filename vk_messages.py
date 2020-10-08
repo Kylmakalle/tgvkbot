@@ -3,6 +3,7 @@ from concurrent.futures._base import CancelledError, TimeoutError
 
 from aiogram.utils.markdown import quote_html, hlink
 from aiovk.longpoll import LongPoll
+from aiogram.utils.exceptions import MessageError
 
 from bot import *
 
@@ -587,7 +588,6 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 to_tg_chat = vkuser.owner.uid
 
             # Логика реплая на сообщение, которое уже есть в чате
-            # Таким кейсом нельзя управлять. Может упасть
             if not main_message:
                 if vk_msg.get('reply_message'):
                     reply_msg_in_db = Message.objects.filter(
@@ -640,10 +640,16 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                         await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                     except:
                         return
-                    tg_message = await bot.send_message(vkuser.owner.uid, body_parts[body_part],
-                                                        parse_mode=ParseMode.HTML,
-                                                        reply_to_message_id=main_message,
-                                                        disable_notification=disable_notify)
+                    try:  # Чтобы не падало при реплае на сообщение из чата внутри ТГ
+                        tg_message = await bot.send_message(vkuser.owner.uid, body_parts[body_part],
+                                                            parse_mode=ParseMode.HTML,
+                                                            reply_to_message_id=main_message,
+                                                            disable_notification=disable_notify)
+                    except MessageError:  # Надо бы обновить aiogram, чтобы можно было ловить MessageToReplyNotFound
+                        tg_message = await bot.send_message(vkuser.owner.uid, body_parts[body_part],
+                                                            parse_mode=ParseMode.HTML,
+                                                            reply_to_message_id=None,
+                                                            disable_notification=disable_notify)
                     if body_part == 0:
                         header_message = tg_message
                         if forwarded:
@@ -665,10 +671,16 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                 except:
                     return
-                header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
-                                                                     parse_mode=ParseMode.HTML,
-                                                                     reply_to_message_id=main_message,
-                                                                     disable_notification=disable_notify)
+                try:  # Чтобы не падало при реплае на сообщение из чата внутри ТГ
+                    header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
+                                                                         parse_mode=ParseMode.HTML,
+                                                                         reply_to_message_id=main_message,
+                                                                         disable_notification=disable_notify)
+                except MessageError:  # Надо бы обновить aiogram, чтобы можно было ловить MessageToReplyNotFound
+                    header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
+                                                                         parse_mode=ParseMode.HTML,
+                                                                         reply_to_message_id=None,
+                                                                         disable_notification=disable_notify)
                 if forwarded:
                     main_message = header_message.message_id
                 Message.objects.create(
