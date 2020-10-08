@@ -751,17 +751,18 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                         await bot.send_chat_action(to_tg_chat, ChatActions.RECORD_AUDIO)
                         tg_message = await tgsend(bot.send_voice, to_tg_chat, voice=attachment['content'])
 
-                        if attachment.get('transcript'):
-                            transcript_text = '<i>Войс:</i> ' + attachment['transcript']
-                            transcript_message = await tgsend(bot.send_message, to_tg_chat, text=transcript_text,
-                                                              reply_to_message_id=tg_message.message_id,
-                                                              parse_mode=ParseMode.HTML)
-                            Message.objects.create(
-                                vk_chat=vk_chat_id,
-                                vk_id=vk_msg_id,
-                                tg_chat=transcript_message.chat.id,
-                                tg_id=transcript_message.message_id
-                            )
+                        # Надо бы делать по-умнее, но очень лень.
+                        # if attachment.get('transcript'):
+                        #     transcript_text = '<i>Войс:</i> ' + attachment['transcript']
+                        #     transcript_message = await tgsend(bot.send_message, to_tg_chat, text=transcript_text,
+                        #                                       reply_to_message_id=tg_message.message_id,
+                        #                                       parse_mode=ParseMode.HTML)
+                        #     Message.objects.create(
+                        #         vk_chat=vk_chat_id,
+                        #         vk_id=vk_msg_id,
+                        #         tg_chat=transcript_message.chat.id,
+                        #         tg_id=transcript_message.message_id
+                        #     )
 
                     Message.objects.create(
                         vk_chat=vk_chat_id,
