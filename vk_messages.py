@@ -676,14 +676,12 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
                                                                          parse_mode=ParseMode.HTML,
                                                                          reply_to_message_id=main_message,
-                                                                         disable_notification=disable_notify,
-                                                                         vk_msg_url=vk_msg_url)
+                                                                         disable_notification=disable_notify)
                 except MessageError:  # Надо бы обновить aiogram, чтобы можно было ловить MessageToReplyNotFound
                     header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
                                                                          parse_mode=ParseMode.HTML,
                                                                          reply_to_message_id=None,
-                                                                         disable_notification=disable_notify,
-                                                                         vk_msg_url=vk_msg_url)
+                                                                         disable_notification=disable_notify)
                 if forwarded:
                     main_message = header_message.message_id
                 Message.objects.create(
