@@ -59,11 +59,9 @@ async def get_vk_chat(cid):
     return VkChat.objects.get_or_create(cid=cid)
 
 
-max_photo_re = re.compile('photo_([0-9]*)')
-
-
-async def get_max_photo(obj, keyword='photo'):
+def get_max_photo(obj, keyword='photo'):
     maxarr = []
+    max_photo_re = re.compile(f'{keyword}_([0-9]*)')
     for k, v in obj.items():
         m = max_photo_re.match(k)
         if m:

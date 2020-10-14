@@ -104,8 +104,13 @@ async def vk_sender(token, tg_message, **kwargs):
                                reply_to_message_id=tg_message.message_id)
         return
     except VkAPIError:
-        log.exception(msg='Error in vk sender', exc_info=True)
-        return None
+        await asyncio.sleep(5)
+        if kwargs.get('retries') > 4:
+            log.exception(msg='Error in vk sender', exc_info=True)
+            return None
+        else:
+            kwargs['retries'] = kwargs.get('retries', 0) + 1
+            await vk_sender(token, tg_message, **kwargs)
     except Exception:
         log.exception(msg='Error in vk sender', exc_info=True)
         return None
@@ -357,7 +362,7 @@ async def get_dialog_info(api, vk_chat_id, name_case='nom'):
     if vk_chat_id >= 2000000000:
         dialog_info = await api('messages.getChat', chat_id=vk_chat_id - 2000000000)
         title = dialog_info['title']
-        max_photo = await get_max_photo(dialog_info)
+        max_photo = get_max_photo(dialog_info)
         if max_photo:
             photo = dialog_info[max_photo]
         else:
@@ -373,7 +378,7 @@ async def get_dialog_info(api, vk_chat_id, name_case='nom'):
     elif vk_chat_id < 0:
         dialog_info = await api('groups.getById', group_ids=abs(vk_chat_id))
         title = dialog_info[0]['name']
-        max_photo = await get_max_photo(dialog_info[0])
+        max_photo = get_max_photo(dialog_info[0])
         if max_photo:
             photo = dialog_info[0][max_photo]
         else:

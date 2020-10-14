@@ -560,6 +560,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
         full_chat = await msg.api('messages.getChat', chat_id=vk_chat_id - 2000000000)
     if full_msg.get('items'):
         for vk_msg in full_msg['items']:
+            vk_msg_url = f'https://vk.com/im?msgid={vk_msg["id"]}&sel=c{vk_msg["peer_id"]}'
             disable_notify = force_disable_notify or bool(vk_msg.get('push_settings', False))
             attaches_scheme = []
             if vk_msg.get('attachments'):
@@ -675,12 +676,14 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
                                                                          parse_mode=ParseMode.HTML,
                                                                          reply_to_message_id=main_message,
-                                                                         disable_notification=disable_notify)
+                                                                         disable_notification=disable_notify,
+                                                                         vk_msg_url=vk_msg_url)
                 except MessageError:  # Надо бы обновить aiogram, чтобы можно было ловить MessageToReplyNotFound
                     header_message = tg_message = await bot.send_message(to_tg_chat, header + body,
                                                                          parse_mode=ParseMode.HTML,
                                                                          reply_to_message_id=None,
-                                                                         disable_notification=disable_notify)
+                                                                         disable_notification=disable_notify,
+                                                                         vk_msg_url=vk_msg_url)
                 if forwarded:
                     main_message = header_message.message_id
                 Message.objects.create(
@@ -697,7 +700,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 for photo in photo_attachments:
                     media.attach_photo(photo['content'])
                 tg_messages = await tgsend(bot.send_media_group, to_tg_chat, media, reply_to_message_id=main_message,
-                                           disable_notification=disable_notify)
+                                           disable_notification=disable_notify, vk_msg_url=vk_msg_url)
                 for tg_message in tg_messages:
                     Message.objects.create(
                         vk_chat=vk_chat_id,
@@ -708,21 +711,23 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
 
             for attachment in attaches_scheme:
                 if attachment:
+                    tg_message = None
                     if attachment['type'] == 'text':
                         await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                         tg_message = await tgsend(bot.send_message, to_tg_chat, attachment['content'],
                                                   parse_mode=ParseMode.HTML, reply_to_message_id=main_message,
-                                                  disable_notification=disable_notify)
+                                                  disable_notification=disable_notify, vk_msg_url=vk_msg_url)
                     elif attachment['type'] == 'photo' and len(photo_attachments) == 1:
                         await bot.send_chat_action(to_tg_chat, ChatActions.UPLOAD_PHOTO)
-                        tg_message = await  tgsend(bot.send_photo, to_tg_chat, attachment['content'],
-                                                   reply_to_message_id=main_message,
-                                                   disable_notification=disable_notify)
+                        tg_message = await tgsend(bot.send_photo, to_tg_chat, attachment['content'],
+                                                  reply_to_message_id=main_message,
+                                                  disable_notification=disable_notify, vk_msg_url=vk_msg_url)
                     elif attachment['type'] == 'document':
                         await bot.send_chat_action(to_tg_chat, ChatActions.UPLOAD_DOCUMENT)
                         tg_message = await tgsend(bot.send_document, to_tg_chat,
                                                   attachment.get('content', '') or attachment.get('url'),
-                                                  reply_to_message_id=main_message, disable_notification=disable_notify)
+                                                  reply_to_message_id=main_message, disable_notification=disable_notify,
+                                                  vk_msg_url=vk_msg_url)
                         if 'content' in attachment:
                             try:
                                 # Иногда тут появляется url, лень проверять откуда растут ноги
@@ -738,19 +743,23 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                     elif attachment['type'] == 'video':
                         await bot.send_chat_action(to_tg_chat, ChatActions.UPLOAD_VIDEO)
                         tg_message = await tgsend(bot.send_video, to_tg_chat, attachment['content'],
-                                                  reply_to_message_id=main_message, disable_notification=disable_notify)
+                                                  reply_to_message_id=main_message, disable_notification=disable_notify,
+                                                  vk_msg_url=vk_msg_url)
                     elif attachment['type'] == 'sticker':
                         await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                         tg_message = await tgsend(bot.send_sticker, to_tg_chat, attachment['content'],
-                                                  reply_to_message_id=main_message, disable_notification=disable_notify)
+                                                  reply_to_message_id=main_message, disable_notification=disable_notify,
+                                                  vk_msg_url=vk_msg_url)
                     elif attachment['type'] == 'location':
                         await bot.send_chat_action(to_tg_chat, ChatActions.FIND_LOCATION)
                         tg_message = await tgsend(bot.send_location, to_tg_chat, *attachment['content'],
-                                                  reply_to_message_id=main_message, disable_notification=disable_notify)
+                                                  reply_to_message_id=main_message, disable_notification=disable_notify,
+                                                  vk_msg_url=vk_msg_url)
                     elif attachment['type'] == 'venue':
                         await bot.send_chat_action(to_tg_chat, ChatActions.FIND_LOCATION)
                         tg_message = await tgsend(bot.send_venue, to_tg_chat, *attachment['content'],
-                                                  reply_to_message_id=main_message, disable_notification=disable_notify)
+                                                  reply_to_message_id=main_message, disable_notification=disable_notify,
+                                                  vk_msg_url=vk_msg_url)
                     elif attachment['type'] == 'audio':
                         await bot.send_chat_action(to_tg_chat, ChatActions.UPLOAD_DOCUMENT)
                         tg_message = await tgsend(bot.send_audio, to_tg_chat, audio=attachment['content'],
@@ -758,6 +767,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                                                   performer=attachment.get('artist', None),
                                                   title=attachment.get('title', None),
                                                   reply_to_message_id=main_message, disable_notification=disable_notify,
+                                                  vk_msg_url=vk_msg_url,
                                                   parse_mode='HTML')
                     elif attachment['type'] == 'audio_message':
                         await bot.send_chat_action(to_tg_chat, ChatActions.RECORD_AUDIO)
@@ -775,26 +785,31 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                         #         tg_chat=transcript_message.chat.id,
                         #         tg_id=transcript_message.message_id
                         #     )
-
-                    Message.objects.create(
-                        vk_chat=vk_chat_id,
-                        vk_id=vk_msg_id,
-                        tg_chat=tg_message.chat.id,
-                        tg_id=tg_message.message_id
-                    )
+                    if tg_message:
+                        Message.objects.create(
+                            vk_chat=vk_chat_id,
+                            vk_id=vk_msg_id,
+                            tg_chat=tg_message.chat.id,
+                            tg_id=tg_message.message_id
+                        )
             if vk_msg.get('fwd_messages'):
                 await bot.send_chat_action(to_tg_chat, ChatActions.TYPING)
                 for fwd_message in vk_msg['fwd_messages']:
-                    fwd_msgs_in_db = Message.objects.filter(
-                        vk_chat=vk_chat_id,
-                        vk_id=fwd_message['id'],
-                        tg_chat=to_tg_chat
-                    )
+                    # Не у всех сообщений есть уникальный id, похоже надо сохранять conversation_message_id в том числе
+                    # И делать миграции
+                    if fwd_message['id']:
+                        fwd_msgs_in_db = Message.objects.filter(
+                            vk_chat=vk_chat_id,
+                            vk_id=fwd_message['id'],
+                            tg_chat=to_tg_chat
+                        )
+                    else:
+                        fwd_msg_in_db = None
                     if fwd_msgs_in_db:
                         for fwd_msg_in_db in fwd_msgs_in_db:
                             try:
                                 await bot.forward_message(to_tg_chat, to_tg_chat, fwd_msg_in_db.tg_id,
-                                                          disable_notification=disable_notify)
+                                                          disable_notification=disable_notify, vk_msg_url=vk_msg_url)
                             except:
                                 await process_message(msg, token=token, is_multichat=is_multichat,
                                                       vk_chat_id=vk_chat_id,
@@ -827,6 +842,7 @@ async def get_name(identifier, api):
 
 
 async def tgsend(method, *args, **kwargs):
+    vk_msg_url = kwargs.pop('vk_msg_url', 0)
     try:
         tg_message = await method(*args, **kwargs)
         return tg_message
@@ -835,6 +851,15 @@ async def tgsend(method, *args, **kwargs):
         await tgsend(method, *args, **kwargs)
     except Exception:
         log.exception(msg='Error in message sending', exc_info=True)
+
+    try:
+        text = '<i>Ошибка отправки вложения VK → Telegram</i>'
+        if vk_msg_url:
+            text += '\n' + f'<a href="{vk_msg_url}">Сообщение</a>'
+        await bot.send_message(args[0], text=text, parse_mode='HTML')
+    except Exception:
+        log.exception(msg='Error in message sending report', exc_info=True)
+        pass
 
 
 async def process_event(msg):
@@ -876,7 +901,7 @@ async def process_attachment(attachment, token=None):
 
         res = {'content': voice_url, 'type': 'audio_message'}
         if attachment[atype].get('transcript'):
-            return {'content': f'<i>Войс:</i>{atype[atype]["transcript"]}', 'type': 'text'}
+            return {'content': f'<i>Войс:</i>{attachment[atype]["transcript"]}', 'type': 'text'}
         return res
 
     elif atype == 'audio':
@@ -969,8 +994,8 @@ async def process_attachment(attachment, token=None):
     elif atype == 'doc':
         ext = attachment[atype]['ext']
         if ext == 'gif':
-            size = attachment[atype]['file_size']
-            gif_url = attachment[atype]['url'] + '&mp4=1'
+            size = int(attachment[atype]['preview']['video']['file_size'])
+            gif_url = attachment[atype]['preview']['video']['src']
             if size > MAX_FILE_SIZE:
                 return {'content': f'<a href="{gif_url}">GIF</a>', 'type': 'text'}
             return {'content': gif_url, 'type': 'document'}
@@ -1018,7 +1043,7 @@ async def process_attachment(attachment, token=None):
         return {'content': file_bytes, 'type': 'sticker'}
 
     elif atype == 'gift':
-        gift_url = attachment[atype][await get_max_photo(attachment[atype], 'thumb')]
+        gift_url = attachment[atype][get_max_photo(attachment[atype], 'thumb')]
         return {'content': f'<a href="{gift_url}">Подарок</a>', 'type': 'text'}
     elif atype == 'link':
         link_url = attachment[atype]['url']
