@@ -795,7 +795,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 for fwd_message in vk_msg['fwd_messages']:
                     # Не у всех сообщений есть уникальный id, похоже надо сохранять conversation_message_id в том числе
                     # И делать миграции
-                    if fwd_message['id']:
+                    if fwd_message.get('id'):
                         fwd_msgs_in_db = Message.objects.filter(
                             vk_chat=vk_chat_id,
                             vk_id=fwd_message['id'],
