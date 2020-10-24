@@ -992,11 +992,15 @@ async def process_attachment(attachment, token=None):
     elif atype == 'doc':
         ext = attachment[atype]['ext']
         if ext == 'gif':
-            size = int(attachment[atype]['preview']['video']['file_size'])
-            gif_url = attachment[atype]['preview']['video']['src']
-            if size > MAX_FILE_SIZE:
-                return {'content': f'<a href="{gif_url}">GIF</a>', 'type': 'text'}
-            return {'content': gif_url, 'type': 'document'}
+            if 'video' in attachment[atype]['preview']:
+                size = int(attachment[atype]['preview']['video']['file_size'])
+                gif_url = attachment[atype]['preview']['video']['src']
+                if size > MAX_FILE_SIZE:
+                    return {'content': f'<a href="{gif_url}">GIF</a>', 'type': 'text'}
+                return {'content': gif_url, 'type': 'document'}
+            else:
+                photo_url = attachment[atype]['preview']['photo']['sizes'][-1]['src']
+                return {'content': photo_url, 'type': 'photo'}
         # elif 'preview' in attachment[atype] and attachment[atype]['preview'].get('graffiti'):
         #     graffiti_url = attachment[atype]['preview']['photo']['sizes'][-1]['src']
         #     with aiohttp.ClientSession() as session:
