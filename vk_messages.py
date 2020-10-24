@@ -560,7 +560,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
         full_chat = await msg.api('messages.getChat', chat_id=vk_chat_id - 2000000000)
     if full_msg.get('items'):
         for vk_msg in full_msg['items']:
-            vk_msg_url = f'https://vk.com/im?msgid={vk_msg.get("id") or vk_msg.get("conversation_message_id") or ""}&sel=c{vk_msg["peer_id"]}'
+            vk_msg_url = f'https://vk.com/im?msgid={vk_msg.get("id") or vk_msg.get("conversation_message_id") or ""}&sel=c{vk_msg.get("peer_id") or vk_msg.get("from_id") or ""}'
             disable_notify = force_disable_notify or bool(vk_msg.get('push_settings', False))
             attaches_scheme = []
             if vk_msg.get('attachments'):
