@@ -802,7 +802,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                             tg_chat=to_tg_chat
                         )
                     else:
-                        fwd_msg_in_db = None
+                        fwd_msgs_in_db = None
                     if fwd_msgs_in_db:
                         for fwd_msg_in_db in fwd_msgs_in_db:
                             try:
