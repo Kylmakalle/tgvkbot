@@ -560,7 +560,22 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
         full_chat = await msg.api('messages.getChat', chat_id=vk_chat_id - 2000000000)
     if full_msg.get('items'):
         for vk_msg in full_msg['items']:
-            vk_msg_url = f'https://vk.com/im?msgid={vk_msg.get("id") or vk_msg.get("conversation_message_id") or ""}&sel=c{vk_msg.get("peer_id") or vk_msg.get("from_id") or ""}'
+            # Формируем ссылку на сообщение на случай ошибки
+
+            # message id
+            vk_msg_url_chat_id = None
+            if vk_msg.get("peer_id"):
+                try:
+                    if int(vk_msg.get("peer_id")) >= 2000000000:
+                        vk_msg_url_chat_id = int(vk_msg.get("peer_id")) - 2000000000
+                except:
+                    pass
+            if not vk_msg_url_chat_id:
+                vk_msg_url_chat_id = vk_msg.get("from_id") or ""
+            #
+            vk_msg_url_msg_id = vk_msg.get("id") or vk_msg.get("conversation_message_id") or ""
+
+            vk_msg_url = f'https://vk.com/im?msgid={vk_msg_url_msg_id}&sel=c{vk_msg_url_chat_id}'
             disable_notify = force_disable_notify or bool(vk_msg.get('push_settings', False))
             attaches_scheme = []
             if vk_msg.get('attachments'):
