@@ -105,7 +105,7 @@ async def vk_sender(token, tg_message, **kwargs):
         return
     except VkAPIError:
         await asyncio.sleep(5)
-        if kwargs.get('retries') > 4:
+        if kwargs.get('retries', 0) > 4:
             log.exception(msg='Error in vk sender', exc_info=True)
             return None
         else:
