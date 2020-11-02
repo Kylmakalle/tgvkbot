@@ -865,11 +865,18 @@ async def tgsend(method, *args, **kwargs):
     except Exception:
         log.exception(msg='Error in message sending', exc_info=True)
 
+    await tgsend_error_report(args[0], vk_msg_url)
+
+
+async def tgsend_error_report(chat_id, vk_msg_url):
     try:
-        text = '<i>Ошибка отправки вложения VK → Telegram</i>'
+        text = '<i>Ошибка отправки сообщения VK → Telegram</i>'
         if vk_msg_url:
             text += '\n' + f'<a href="{vk_msg_url}">Сообщение</a>'
-        await bot.send_message(args[0], text=text, parse_mode='HTML')
+        await bot.send_message(chat_id, text=text, parse_mode='HTML')
+    except RetryAfter as e:
+        await asyncio.sleep(e.timeout)
+        await tgsend_error_report(chat_id, vk_msg_url)
     except Exception:
         log.exception(msg='Error in message sending report', exc_info=True)
         pass
