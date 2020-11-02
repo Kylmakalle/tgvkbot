@@ -608,7 +608,8 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 if vk_msg.get('reply_message'):
                     reply_msg_in_db = Message.objects.filter(
                         vk_chat=vk_chat_id,
-                        vk_id=vk_msg['reply_message']['id'],
+                        vk_id=vk_msg['reply_message'].get('id') or vk_msg['reply_message'].get(
+                            'conversation_message_id'),
                         tg_chat=to_tg_chat
                     ).first()
                     if reply_msg_in_db:
