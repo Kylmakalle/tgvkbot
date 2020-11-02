@@ -575,11 +575,11 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
             #
             vk_msg_url_msg_id = vk_msg.get("id") or vk_msg.get("conversation_message_id") or ""
 
-            vk_msg_url = f'https://vk.com/im?msgid={vk_msg_url_msg_id}&sel=c{vk_msg_url_chat_id}'
+            vk_msg_url = f'https://vk.com/im?msgid={vk_msg_url_msg_id}&sel={vk_msg_url_chat_id}'
             disable_notify = force_disable_notify or bool(vk_msg.get('push_settings', False))
             attaches_scheme = []
             if vk_msg.get('attachments'):
-                attaches_scheme = [await process_attachment(attachment, token) for attachment in
+                attaches_scheme = [await process_attachment(attachment, token, vk_msg_url) for attachment in
                                    vk_msg['attachments']]
             if vk_msg.get('geo'):
                 location = vk_msg['geo']['coordinates']['latitude'], vk_msg['geo']['coordinates']['longitude']
@@ -911,7 +911,7 @@ def form_audio_title(data: dict, delimer=' '):
     return result
 
 
-async def process_attachment(attachment, token=None):
+async def process_attachment(attachment, token=None, vk_msg_url=None):
     atype = attachment.get('type')
     if atype == 'photo':
         photo_url = attachment[atype]['sizes'][-1]['url']
@@ -1002,7 +1002,7 @@ async def process_attachment(attachment, token=None):
             except:
                 pass
 
-        return {'content': '<i>Аудио</i>', 'type': 'text'}
+        return {'content': f'🎵 {hlink(form_audio_title(attachment[atype]), vk_msg_url)}', 'type': 'text'}
 
     elif atype == 'video':
         title = attachment[atype]['title']

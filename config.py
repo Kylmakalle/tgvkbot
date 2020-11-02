@@ -8,12 +8,12 @@ DATABASE_NAME = os.environ.get('POSTGRES_DB', 'tgvkbot')
 
 VK_APP_ID = os.environ.get('VK_APP_ID', '2685278')  # Kate mobile
 
-AUDIO_URL = os.environ.get('AUDIO_URL', 'http://thatmusic.akentev.com/id/{owner_id}/{audio_id}')
+AUDIO_URL = os.environ.get('AUDIO_URL', '')
 AUDIO_ACCESS_URL = os.environ.get('AUDIO_ACCESS_URL',
-                                  'http://thatmusic.akentev.com/access_id/{token}/{owner_id}/{audio_id}/{access_key}')
-TOKEN_REFRESH_URL = os.environ.get('TOKEN_REFRESH_URL', 'http://thatmusic.akentev.com/refresh')
-AUDIO_SEARCH_URL = os.environ.get('AUDIO_SEARCH_URL', 'https://thatmusic.akentev.com/search/')
-AUDIO_PROXY_URL = os.environ.get('AUDIO_PROXY_URL', 'https://thatmusic.akentev.com/proxy/')
+                                  '')
+TOKEN_REFRESH_URL = os.environ.get('TOKEN_REFRESH_URL', '')
+AUDIO_SEARCH_URL = os.environ.get('AUDIO_SEARCH_URL', '')
+AUDIO_PROXY_URL = os.environ.get('AUDIO_PROXY_URL', '')
 AUDIO_HEADERS = {
     'user-agent': 'KateMobileAndroid/52.1 lite-445 (Android 4.4.2; SDK 19; x86; unknown Android SDK built for x86; en)'}
 
