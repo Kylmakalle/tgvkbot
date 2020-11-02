@@ -582,7 +582,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 attaches_scheme = [await process_attachment(attachment, token) for attachment in
                                    vk_msg['attachments']]
             if vk_msg.get('geo'):
-                location = vk_msg['geo']['coordinates'].split(' ')
+                location = vk_msg['geo']['coordinates']['latitude'], vk_msg['geo']['coordinates']['longitude']
                 is_venue = vk_msg['geo'].get('place')
                 if is_venue:
                     attaches_scheme.append({'content': [location[0], location[1], is_venue.get('title', 'Место'),
