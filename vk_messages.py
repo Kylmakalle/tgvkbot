@@ -567,7 +567,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
             if vk_msg.get("peer_id"):
                 try:
                     if int(vk_msg.get("peer_id")) >= 2000000000:
-                        vk_msg_url_chat_id = int(vk_msg.get("peer_id")) - 2000000000
+                        vk_msg_url_chat_id = f"c{int(vk_msg.get('peer_id')) - 2000000000}"
                 except:
                     pass
             if not vk_msg_url_chat_id:
