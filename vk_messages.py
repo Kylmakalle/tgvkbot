@@ -911,10 +911,14 @@ def form_audio_title(data: dict, delimer=' '):
     return result
 
 
+def search_max_vk_photo_size(sizes: list) -> dict:
+    return list(sorted(sizes, key=lambda x: (int(x.get('width', 0)), int(x.get('height', 0))), reverse=True))[0]
+
+
 async def process_attachment(attachment, token=None, vk_msg_url=None):
     atype = attachment.get('type')
     if atype == 'photo':
-        photo_url = attachment[atype]['sizes'][-1]['url']
+        photo_url = search_max_vk_photo_size(attachment[atype]['sizes'])['url']
         return {'content': photo_url, 'type': 'photo'}
 
     elif atype == 'audio_message':
