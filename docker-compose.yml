@@ -7,26 +7,17 @@ services:
     env_file:
       - env_file
     restart: always
-    networks:
-      - db_nw
   tgbot:
     logging:
       options:
         max-size: "10M"
         max-file: "10"
     build: .
-    volumes:
-      - .:/src
     env_file:
       - env_file
     command: bash -c "python manage.py makemigrations data && python manage.py migrate data && python telegram.py"
     restart: always
-    networks:
-      - db_nw
     depends_on:
       - db
-networks:
-  db_nw:
-    driver: bridge
 volumes:
   dbdata:
