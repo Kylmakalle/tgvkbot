@@ -2,7 +2,6 @@ version: '2'
 services:
   app:
     build: .
-    command: sh -c "python manage.py makemigrations data && python manage.py migrate data && python telegram.py"
     restart: always
     environment:
       BOT_TOKEN:
