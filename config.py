@@ -32,3 +32,9 @@ AUDIO_API_VERSION = os.environ.get('API_VERSION', '5.78')
 # Возможно достаточно заглушки в стиле 'tgvkbot-super-secret-key(nope)'
 SECRET_KEY = os.environ.get('SECRET_KEY', '!jh4wm=%s%l&jv7-lru6hg)mq2pk&rd@i*s0*c!v!zv01cf9iw')
 
+SENTRY_URL = os.environ.get('SENTRY_URL', None)
+
+if SENTRY_URL:
+    import sentry_sdk
+
+    sentry_sdk.init(SENTRY_URL)

@@ -1,0 +1,24 @@
+# Project
+.idea/
+.github/
+pyproject.toml
+.flake8
+.*ignore
+.isort.cfg
+Makefile
+readme.md
+
+# Cache
+*.py[cod]
+__pycache__
+
+# Texts
+*.mo
+
+# Environment
+*.env
+env_file
+
+# Docker
+docker-compose*.yml
+Dockerfile
