@@ -3,11 +3,12 @@ version: '3'
 
 services:
   app:
+    image: kylmakalle/tgvkbot:latest
+    container_name: tgvkbot
     logging:
       options:
         max-size: "10M"
         max-file: "10"
-    image: kylmakalle/tgvkbot:latest
     restart: always
     env_file:
       - env_file
@@ -17,6 +18,7 @@ services:
       - db
   db:
     image: postgres:9-alpine
+    container_name: tgvkbot_db
     volumes:
       - "dbdata:/var/lib/postgresql/data"
     restart: always
