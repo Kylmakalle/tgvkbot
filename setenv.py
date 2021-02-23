@@ -12,6 +12,7 @@ VK_APP_ID=%(vk_app_id)s
 ALLOWED_USER_IDS=%(allowed_user_ids)s
 """
 
+ENV_FILE = 'env_file'
 
 def check_token(token):
     response = urlopen("https://api.telegram.org/bot{token}/{method}".format(token=token, method='getMe'))
@@ -43,13 +44,14 @@ def set_env():
         tg_token = input('Токен Telegram бота: ')
         tg_token = tg_token.strip()
         try:
+            print('⏳ Проверяем токен...')
             check_token(tg_token)
             break
         except HTTPError:
             print('❌ Токен бота неверный или нерабочий, попробуйте снова!')
 
     while True:
-        vk_app_id = input('VK APP ID: ')
+        vk_app_id = input('VK APP ID (можно оставить пустым): ')
         vk_app_id = vk_app_id.strip()
         if vk_app_id:
             try:
@@ -57,13 +59,19 @@ def set_env():
                 break
             except HTTPError:
                 print('❌ VK APP ID неверный, попробуйте снова!')
+        else:
+            print('ℹ️ Будет использован VK APP ID {} от Kate Mobile'.format(VK_APP_ID))
+            break
 
-    with open('env_file', 'w') as env_file:
-        env_file.write(s
+    with open(ENV_FILE, 'w') as env_file:
+        env_file.write(
             ENV_FILE_TEMPLATE % {'tg_token': tg_token, 'vk_app_id': vk_app_id or VK_APP_ID, 'allowed_user_ids': ''})
 
-    print('✅ Успешно!')
+    print('✅ Переменные успешно установлены в {}'.format(ENV_FILE))
 
 
 if __name__ == '__main__':
-    set_env()
+    try:
+        set_env()
+    except KeyboardInterrupt:
+        print('\n⚠️ Настройка переменных окружуения была прервана!')

@@ -698,7 +698,7 @@ async def help_command(msg: types.Message):
                    '/chat - Список связанных чатов с диалогами ВКонтакте, привязать чат к диалогу можно добавив бота в группу\n' \
                    '/stop - Выход из ВКонтакте\n' \
                    '/help - Помощь' \
-                   '/id - Узнать Telegram ID' 
+                   '/id - Узнать Telegram ID'
 
     await bot.send_message(msg.chat.id, HELP_MESSAGE, parse_mode=ParseMode.HTML)
 
@@ -714,6 +714,10 @@ async def handle_text(msg: types.Message):
     if msg.chat.type == 'private':
         m = oauth_link.search(msg.text)
         if m:
+            if ALLOWED_USER_IDS:
+                if str(msg.from_user.id) not in ALLOWED_USER_IDS.replace(' ', '').split(','):
+                    await msg.reply('⛔️ Бот недоступен для Вашего аккаунта.\nУзнать Telegram ID - /id')
+                    return
             await bot.send_chat_action(msg.from_user.id, ChatActions.TYPING)
             token = m.group(2)
             if not VkUser.objects.filter(token=token).exists():

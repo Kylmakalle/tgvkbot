@@ -2,7 +2,7 @@ version: '3'
 
 
 services:
-  app:
+  bot:
     image: kylmakalle/tgvkbot:latest
     container_name: tgvkbot
     logging:
