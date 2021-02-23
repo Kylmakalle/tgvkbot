@@ -18,6 +18,7 @@ __pycache__
 # Environment
 *.env
 env_file
+setenv.py
 
 # Docker
 docker-compose*.yml

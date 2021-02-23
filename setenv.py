@@ -8,6 +8,7 @@ POSTGRES_DB=tgvkbot
 POSTGRES_PASSWORD=postgres
 BOT_TOKEN=%(tg_token)s
 VK_APP_ID=%(vk_app_id)s
+ALLOWED_USER_IDS=%(allowed_user_ids)s
 """
 
 
@@ -55,9 +56,9 @@ def set_env():
                 break
             except HTTPError:
                 print('❌ VK APP ID неверный, попробуйте снова!')
-
+    
     with open('env_file', 'w') as env_file:
-        env_file.write(ENV_FILE_TEMPLATE % {'tg_token': tg_token, 'vk_app_id': vk_app_id or VK_APP_ID})
+        env_file.write(ENV_FILE_TEMPLATE % {'tg_token': tg_token, 'vk_app_id': vk_app_id or VK_APP_ID}, 'allowed_user_ids': '')
 
     print('✅ Успешно!')
 

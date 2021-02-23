@@ -562,7 +562,7 @@ async def search_callback(call: types.CallbackQuery):
 async def send_welcome(msg: types.Message):
     if ALLOWED_USER_IDS:
         if str(msg.from_user.id) not in ALLOWED_USER_IDS.replace(' ','').split(','):
-            await msg.reply('⛔️ Бот недоступен для Вашего аккаунта.')
+            await msg.reply('⛔️ Бот недоступен для Вашего аккаунта.\nУзнать Telegram ID - /id')
             return
     user, created = await update_user_info(msg.from_user)
     tgchat, tgchat_created = await update_chat_info(msg.chat)
@@ -697,10 +697,15 @@ async def help_command(msg: types.Message):
                    '/search /s - Поиск по диалогам\n' \
                    '/chat - Список связанных чатов с диалогами ВКонтакте, привязать чат к диалогу можно добавив бота в группу\n' \
                    '/stop - Выход из ВКонтакте\n' \
-                   '/help - Помощь'
+                   '/help - Помощь' \
+                   '/id - Узнать Telegram ID' 
 
     await bot.send_message(msg.chat.id, HELP_MESSAGE, parse_mode=ParseMode.HTML)
 
+@dp.message_handler(commands=['id'])
+async def id_command(msg: types.Message):
+    user, created = await update_user_info(msg.from_user)
+    await bot.send_message(msg.chat.id, 'Ваш ID: <code>{}</code>'.format(msg.from_user.id), parse_mode=ParseMode.HTML)
 
 @dp.message_handler(content_types=['text'])
 async def handle_text(msg: types.Message):
