@@ -1,11 +1,10 @@
-FROM python:3.6
-# MAINTAINER Sergey (@Kylmakalle) <iceman9831@gmail.com>
+FROM python:3.6-slim AS builder
+RUN apt-get update && apt-get install -y gcc
+COPY requirements.txt .
+RUN pip install --user -r requirements.txt
 
-ENV PYTHONUNBUFFERED 1
-RUN mkdir /src
-WORKDIR /src
-COPY requirements.txt /src/
-RUN pip install -r requirements.txt
-COPY . /src
-
-
+FROM python:3.6-slim
+COPY --from=builder /root/.local /root/.local
+COPY . .
+ENV PATH=/root/.local/bin:$PATH
+ENTRYPOINT bash -c "python manage.py makemigrations data && python manage.py migrate data && python telegram.py"

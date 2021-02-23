@@ -1,32 +1,21 @@
-version: '3'
+version: '2'
 services:
-  db:
-    image: "postgres:9.6.5"
-    volumes:
-      - "dbdata:/var/lib/postgresql/data"
-    env_file:
-      - env_file
-    restart: always
-    networks:
-      - db_nw
-  tgbot:
-    logging:
-      options:
-        max-size: "10M"
-        max-file: "10"
+  app:
     build: .
-    volumes:
-      - .:/src
-    env_file:
-      - env_file
-    command: bash -c "python manage.py makemigrations data && python manage.py migrate data && python telegram.py"
     restart: always
-    networks:
-      - db_nw
+    environment:
+      BOT_TOKEN:
     depends_on:
       - db
-networks:
-  db_nw:
-    driver: bridge
+  db:
+    image: postgres:9-alpine
+    volumes:
+      - db:/var/lib/postgresql/data
+    restart: always
+    environment:
+      POSTGRES_DB: 'tgvkbot'
+      POSTGRES_PASSWORD: 'postgres'
+
 volumes:
-  dbdata:
+  db:
+    driver: local
