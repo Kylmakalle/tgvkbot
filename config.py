@@ -1,5 +1,7 @@
 import os
 
+ALLOWED_USER_IDS = os.environ.get('ALLOWED_USER_IDS', '')
+
 DATABASE_USER = os.environ.get('POSTGRES_USER', 'postgres')
 DATABASE_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'postgres')
 DATABASE_HOST = os.environ.get('DATABASE_HOST', 'db')

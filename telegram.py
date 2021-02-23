@@ -560,6 +560,10 @@ async def search_callback(call: types.CallbackQuery):
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(msg: types.Message):
+    if ALLOWED_USER_IDS:
+        if str(msg.from_user.id) not in ALLOWED_USER_IDS.replace(' ','').split(','):
+            await msg.reply('⛔️ Бот недоступен для Вашего аккаунта.')
+            return
     user, created = await update_user_info(msg.from_user)
     tgchat, tgchat_created = await update_chat_info(msg.chat)
     if not tgchat:
