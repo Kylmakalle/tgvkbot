@@ -38,13 +38,13 @@ def get_auth_page(app_id):
 
 def set_env():
     while True:
-        tg_token = input('Telegram Token: ')
+        tg_token = input('Токен Telegram бота: ')
         tg_token = tg_token.strip()
         try:
             check_token(tg_token)
             break
         except HTTPError:
-            print('Token is invalid, try again!')
+            print('❌ Токен бота неверный или нерабочий, попробуйте снова!')
 
     while True:
         vk_app_id = input('VK APP ID: ')
@@ -54,12 +54,12 @@ def set_env():
                 get_auth_page(vk_app_id)
                 break
             except HTTPError:
-                print('VK APP ID is invalid, try again!')
+                print('❌ VK APP ID неверный, попробуйте снова!')
 
     with open('env_file', 'w') as env_file:
         env_file.write(ENV_FILE_TEMPLATE % {'tg_token': tg_token, 'vk_app_id': vk_app_id or VK_APP_ID})
 
-    print('Success!')
+    print('✅ Успешно!')
 
 
 if __name__ == '__main__':
