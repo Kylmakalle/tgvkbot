@@ -1,0 +1,32 @@
+version: '3'
+
+
+services:
+  bot_local:
+    build: .
+    volumes:
+      - .:/src
+    container_name: tgvkbot_local
+    logging:
+      options:
+        max-size: "10M"
+        max-file: "10"
+    restart: always
+    env_file:
+      - env_file
+    labels:
+      com.centurylinklabs.watchtower.enable: 'true'
+    depends_on:
+      - db
+  db:
+    image: postgres:9-alpine
+    container_name: tgvkbot_db
+    volumes:
+      - "dbdata:/var/lib/postgresql/data"
+    restart: always
+    environment:
+      POSTGRES_DB: 'tgvkbot'
+      POSTGRES_PASSWORD: 'postgres'
+
+volumes:
+  dbdata:
