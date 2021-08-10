@@ -5,8 +5,8 @@ async-timeout==2.0.1
 attrs==17.4.0
 Django==2.0.4
 multidict==4.1.0
-Pillow==5.1.0
-psycopg2-binary==2.7.4
+Pillow==5.1.0 --no-binary=Pillow
+psycopg2-binary==2.7.4 --no-binary=psycopg2-binary
 pytz==2018.3
 sentry-sdk==0.20.3
 ujson==1.35
