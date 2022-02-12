@@ -23,3 +23,5 @@ setenv.py
 # Docker
 docker-compose*.yml
 Dockerfile
+
+.venv
