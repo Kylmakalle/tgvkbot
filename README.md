@@ -46,6 +46,28 @@ ID можно узнать командой `/id` в боте или через 
 
 Не забудьте отключить бота из образа командой `docker-compose down`
 
+# Установка в Dokku
+
+На сервере:
+
+```bash
+dokku apps:create tgvkbot
+dokku postgres:create tgvkbot_db
+dokku postgres:link tgvkbot_db tgvkbot
+
+dokku config:set tgvkbot BOT_TOKEN=<tg_token> [VK_APP_ID=<vk_app_id> ALLOWED_USER_IDS=<tg_user_ids,...> MAX_FILE_SIZE=<num> ...]
+```
+
+На локальном компьютере/где угодно:
+
+```bash
+git clone https://github.com/dm1sh/tgvkbot
+cd tgvkbot
+git remote add dokku dokku@<dokku_host_url>:tgvkbot
+git push dokku
+```
+
+
 # Сервисы музыки (Устаревшие)
 Ниже прокси для музыки, которые использовали ранее. Сейчас они нерелевантны, но код открыт и в боте есть поддержка кастомных бэкендов музыки.
 
