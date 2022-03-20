@@ -9,7 +9,7 @@ DATABASES = {
 }
 
 if not DATABASE_URL:
-    DATABASE['default'] = {
+    DATABASES['default'] = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': DATABASE_NAME,
         'USER': DATABASE_USER,
