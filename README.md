@@ -48,6 +48,8 @@ ID можно узнать командой `/id` в боте или через 
 
 # Установка в Dokku
 
+Подробнее о деплое через Dokku можно прочитать [здесь](https://dokku.com/docs/deployment/application-deployment/).
+
 На сервере:
 
 ```bash
@@ -58,11 +60,9 @@ dokku postgres:link tgvkbot_db tgvkbot
 dokku config:set tgvkbot BOT_TOKEN=<tg_token> [VK_APP_ID=<vk_app_id> ALLOWED_USER_IDS=<tg_user_ids,...> MAX_FILE_SIZE=<num> ...]
 ```
 
-На локальном компьютере/где угодно:
+На локальном компьютере/где угодно в папке с репозиторием:
 
 ```bash
-git clone https://github.com/dm1sh/tgvkbot
-cd tgvkbot
 git remote add dokku dokku@<dokku_host_url>:tgvkbot
 git push dokku
 ```
