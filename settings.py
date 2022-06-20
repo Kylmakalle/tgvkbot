@@ -1,13 +1,12 @@
 from config import *
 
-import dj_database_url
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 DATABASES = {}
 
 if DATABASE_URL:
+    import dj_database_url
     # Reads string from DATABASE_URL env by default
     DATABASES['default'] = dj_database_url.config()
 else:
