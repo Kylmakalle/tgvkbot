@@ -8,3 +8,4 @@ env_file
 openssl_config
 venv/
 commands/
+.venv

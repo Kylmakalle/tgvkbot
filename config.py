@@ -8,6 +8,8 @@ DATABASE_HOST = os.environ.get('DATABASE_HOST', 'db')
 DATABASE_PORT = os.environ.get('DATABASE_PORT', '5432')
 DATABASE_NAME = os.environ.get('POSTGRES_DB', 'tgvkbot')
 
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
 VK_APP_ID = os.environ.get('VK_APP_ID', '2685278')  # Kate mobile
 
 AUDIO_URL = os.environ.get('AUDIO_URL', '')
@@ -30,8 +32,6 @@ MAX_FILE_SIZE = os.environ.get('MAX_FILE_SIZE', 52428800)
 API_VERSION = os.environ.get('API_VERSION', '5.124')
 AUDIO_API_VERSION = os.environ.get('API_VERSION', '5.78')
 
-# https://www.miniwebtool.com/django-secret-key-generator/
-# Возможно достаточно заглушки в стиле 'tgvkbot-super-secret-key(nope)'
 SECRET_KEY = os.environ.get('SECRET_KEY', '!jh4wm=%s%l&jv7-lru6hg)mq2pk&rd@i*s0*c!v!zv01cf9iw')
 
 SENTRY_URL = os.environ.get('SENTRY_URL', None)
