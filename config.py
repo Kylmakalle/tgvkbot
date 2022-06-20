@@ -1,7 +1,5 @@
 import os
 
-from django.core.management.utils import get_random_secret_key
-
 ALLOWED_USER_IDS = os.environ.get('ALLOWED_USER_IDS', '')
 
 DATABASE_USER = os.environ.get('POSTGRES_USER', 'postgres')
@@ -34,7 +32,7 @@ MAX_FILE_SIZE = os.environ.get('MAX_FILE_SIZE', 52428800)
 API_VERSION = os.environ.get('API_VERSION', '5.124')
 AUDIO_API_VERSION = os.environ.get('API_VERSION', '5.78')
 
-SECRET_KEY = os.environ.get('SECRET_KEY', get_random_secret_key())
+SECRET_KEY = os.environ.get('SECRET_KEY', '!jh4wm=%s%l&jv7-lru6hg)mq2pk&rd@i*s0*c!v!zv01cf9iw')
 
 SENTRY_URL = os.environ.get('SENTRY_URL', None)
 
