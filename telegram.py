@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
 oauth_link = re.compile(
-    'https://(oauth|api)\.vk\.com/blank\.html#access_token=([a-z0-9]*)&expires_in=[0-9]*&user_id=[0-9]*')
+    'https://(oauth|api)\.vk\.com/blank\.html#(access_token|с)=([a-zA-Z0-9._-]*)&expires_in=[0-9]*&user_id=[0-9]*')
 
 
 async def get_pages_switcher(markup, page, pages):
