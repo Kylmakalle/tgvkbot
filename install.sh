@@ -54,6 +54,11 @@ else
 fi
 
 echo "🚀 Запускаем бота..."
-docker-compose up -d
+if docker-compose --version &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+elif docker compose version &> /dev/null; then
+    COMPOSE_CMD="docker compose"
+fi
+$COMPOSE_CMD up -d
 
 echo "✅ Готово"
