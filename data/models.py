@@ -65,6 +65,11 @@ class VkUser(models.Model):
     is_polling = models.BooleanField(default=False)
     owner = models.ForeignKey(TgUser, on_delete=models.CASCADE)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['token', 'is_polling'], name='idx_token_polling')
+        ]
+
 
 class VkChat(models.Model):
     objects = AsyncManager()
