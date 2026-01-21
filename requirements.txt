@@ -10,7 +10,7 @@ psycopg2-binary==2.7.4
 pytz==2018.3
 sentry-sdk==0.20.3
 ujson==1.35
-urllib3==1.25.3
+urllib3==1.26.5
 wget==3.2
 yarl==1.1.1
 dj-database-url==0.5.0
