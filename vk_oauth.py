@@ -1,6 +1,5 @@
-import json
 import re
-from urllib.parse import parse_qs, unquote_plus, urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 
 OAUTH_REDIRECT_LINK = re.compile(
@@ -22,27 +21,6 @@ def parse_oauth_token(value):
             url = urlsplit(candidate)
         except ValueError:
             continue
-
-        if url.fragment.startswith('payload='):
-            try:
-                payload = json.loads(unquote_plus(url.fragment[len('payload='):]))
-            except (TypeError, ValueError):
-                continue
-            if not isinstance(payload, dict):
-                continue
-            user = payload.get('user', {})
-            token = payload.get('token')
-            ttl = payload.get('ttl')
-            user_id = user.get('id') if isinstance(user, dict) else None
-            if payload.get('type') != 'silent_token':
-                continue
-            if not isinstance(token, str) or not token:
-                continue
-            if not isinstance(ttl, int) or isinstance(ttl, bool) or ttl <= 0:
-                continue
-            if not isinstance(user_id, int) or isinstance(user_id, bool):
-                continue
-            return token
 
         params = parse_qs(url.fragment, keep_blank_values=True)
         tokens = params.get('access_token', [])
