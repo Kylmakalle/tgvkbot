@@ -23,9 +23,9 @@ def check_token(token):
 
 
 def get_auth_page(app_id):
-    AUTH_URL = 'https://oauth.vk.com/authorize'
+    AUTH_URL = 'https://oauth.vk.ru/authorize'
     params = {'client_id': app_id,
-              'redirect_uri': 'https://oauth.vk.com/blank.html',
+              'redirect_uri': 'https://oauth.vk.ru/blank.html',
               'display': 'mobile',
               'response_type': 'token',
               'v': API_VERSION

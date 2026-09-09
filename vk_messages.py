@@ -55,7 +55,7 @@ class Event:
         self.occupied_by = []
 
 
-# https://vk.com/dev/using_longpoll
+# https://vk.ru/dev/using_longpoll
 class LongpollEvent(Event):
     __slots__ = ("evnt_data", "id")
 
@@ -496,7 +496,7 @@ async def process_longpoll_event(api, new_event):
         data.user_id = int(new_event[3])
         data.is_multichat = False
 
-    # https://vk.com/dev/using_longpoll_2
+    # https://vk.ru/dev/using_longpoll_2
     flags = parse_msg_flags(new_event[2])
 
     if flags['outbox']:
@@ -576,7 +576,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
             #
             vk_msg_url_msg_id = vk_msg.get("id") or vk_msg.get("conversation_message_id") or ""
 
-            vk_msg_url = f'https://vk.com/im?msgid={vk_msg_url_msg_id}&sel={vk_msg_url_chat_id}'
+            vk_msg_url = f'https://vk.ru/im?msgid={vk_msg_url_msg_id}&sel={vk_msg_url_chat_id}'
             disable_notify = force_disable_notify or bool(vk_msg.get('push_settings', False))
             attaches_scheme = []
             if vk_msg.get('attachments'):
@@ -649,7 +649,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
                 for body_part in range(len(body_parts)):
                     m = inline_link_re.finditer(body_parts[body_part])
                     for i in m:
-                        vk_url = f'https://vk.com/{i.group(1)}'
+                        vk_url = f'https://vk.ru/{i.group(1)}'
                         check_url = await check_vk_url(vk_url)
                         if check_url:
                             body_parts[body_part] = body_parts[body_part].replace(i.group(0),
@@ -681,7 +681,7 @@ async def process_message(msg, token=None, is_multichat=None, vk_chat_id=None, u
             elif not body_parts and (header + body):
                 m = inline_link_re.finditer(body)
                 for i in m:
-                    vk_url = f'https://vk.com/{i.group(1)}'
+                    vk_url = f'https://vk.ru/{i.group(1)}'
                     check_url = await check_vk_url(vk_url)
                     if check_url:
                         body = body.replace(i.group(0), hlink(f'{i.group(2)}', url=vk_url))
@@ -1014,7 +1014,7 @@ async def process_attachment(attachment, token=None, vk_msg_url=None):
         owner_id = attachment[atype]['owner_id']
         video_id = attachment[atype]['id']
         access_key = attachment[atype].get('access_key')
-        video_url = f'https://vk.com/im?z=video{owner_id}_{video_id}' + f'/{access_key}' if access_key else ''
+        video_url = f'https://vk.ru/im?z=video{owner_id}_{video_id}' + f'/{access_key}' if access_key else ''
         return {'content': f'<i>🎥 Видеозапись</i> <a href="{video_url}">{title}</a>', 'type': 'text'}
 
     elif atype == 'doc':
@@ -1100,7 +1100,7 @@ async def process_attachment(attachment, token=None, vk_msg_url=None):
         return {'content': photo_content + f'<a href="{link_url}">🔗 {link_name}</a>', 'type': 'text'}
 
     elif atype == 'market':
-        market_url = f'https://vk.com/market{attachment[atype]["owner_id"]}_{attachment[atype]["id"]}'
+        market_url = f'https://vk.ru/market{attachment[atype]["owner_id"]}_{attachment[atype]["id"]}'
         photo_content = ''
         if attachment[atype].get('thumb_photo'):
             photo_content = f'<a href="{attachment[atype]["thumb_photo"]}">&#8203;</a>'
@@ -1115,7 +1115,7 @@ async def process_attachment(attachment, token=None, vk_msg_url=None):
         return {'content': photo_content + title + description + price + '\n', 'type': 'text'}
 
     elif atype == 'market_album':
-        market_album_url = f'https://vk.com/market{attachment[atype]["owner_id"]}?section=album_{attachment[atype]["id"]}'
+        market_album_url = f'https://vk.ru/market{attachment[atype]["owner_id"]}?section=album_{attachment[atype]["id"]}'
         photo_content = ''
         if attachment[atype].get('photo'):
             photo_url = attachment[atype]['photo']['sizes'][-1]['url']
@@ -1129,14 +1129,14 @@ async def process_attachment(attachment, token=None, vk_msg_url=None):
             atype].get('to_id', '')
         post_id = attachment[atype]['id']
         # access_key = attachment[atype].get('access_key')
-        wall_url = f'https://vk.com/wall{owner_id}_{post_id}'  # + f'_{access_key}' if access_key else ''
+        wall_url = f'https://vk.ru/wall{owner_id}_{post_id}'  # + f'_{access_key}' if access_key else ''
         return {'content': f'<a href="{wall_url}">📰 Запись на стене</a>', 'type': 'text'}
 
     elif atype == 'wall_reply':
         owner_id = attachment[atype].get('owner_id', '') or attachment[atype].get('from_id', '') or attachment[
             atype].get('to_id', '')
         post_id = attachment[atype]['post_id']
-        wall_reply_url = f'https://vk.com/wall{owner_id}_{post_id}'
+        wall_reply_url = f'https://vk.ru/wall{owner_id}_{post_id}'
         reply_text = attachment[atype].get('text', '')
         if reply_text:
             reply_text = '\n' + reply_text

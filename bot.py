@@ -33,6 +33,7 @@ from data.models import *
 
 class VkSession(TokenSession):
     API_VERSION = API_VERSION
+    REQUEST_URL = 'https://api.vk.ru/method/'
 
 
 class RateLimitedDriver(LimitRateDriverMixin, HttpDriver):

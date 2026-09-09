@@ -566,8 +566,8 @@ async def send_welcome(msg: types.Message):
     if not tgchat:
         existing_vkuser = VkUser.objects.filter(owner=user).count()
         if not existing_vkuser:
-            link = 'https://oauth.vk.com/authorize?client_id={}&' \
-                   'display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=friends,messages,offline,docs,photos,video,stories,audio' \
+            link = 'https://oauth.vk.ru/authorize?client_id={}&' \
+                   'display=page&redirect_uri=https://oauth.vk.ru/blank.html&scope=friends,messages,offline,docs,photos,video,stories,audio' \
                    '&response_type=token&v={}'.format(VK_APP_ID, API_VERSION)
             mark = InlineKeyboardMarkup()
             login = InlineKeyboardButton('ВХОД', url=link)
@@ -827,7 +827,7 @@ async def handle_documents(msg: types.Message):
             if msg.content_type == 'voice':
                 upload_attachment_options['upload_type'] = 'audio_message'
 
-            # https://vk.com/wall-1_395554
+            # https://vk.ru/wall-1_395554
             # if msg.content_type == 'sticker':
             #     if msg.sticker.to_python()['is_animated']:
             #         file_id = msg.sticker.thumb.file_id
