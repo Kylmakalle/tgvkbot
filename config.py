@@ -10,7 +10,7 @@ DATABASE_NAME = os.environ.get('POSTGRES_DB', 'tgvkbot')
 
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
-VK_APP_ID = os.environ.get('VK_APP_ID', '2685278')  # Kate mobile
+VK_APP_ID = os.environ.get('VK_APP_ID', '6463690')  # Маруся
 
 AUDIO_URL = os.environ.get('AUDIO_URL', '')
 AUDIO_ACCESS_URL = os.environ.get('AUDIO_ACCESS_URL',

@@ -60,7 +60,7 @@ def set_env():
             except HTTPError:
                 print('❌ VK APP ID неверный, попробуйте снова!')
         else:
-            print('ℹ️ Будет использован VK APP ID {} от Kate Mobile'.format(VK_APP_ID))
+            print('ℹ️ Будет использован VK APP ID {} от Маруси'.format(VK_APP_ID))
             break
 
     with open(ENV_FILE, 'w') as env_file:
