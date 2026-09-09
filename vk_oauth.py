@@ -3,7 +3,7 @@ from urllib.parse import parse_qs, urlsplit
 
 
 OAUTH_REDIRECT_LINK = re.compile(
-    r'https://(?:(?:oauth|api)\.vk\.com|oauth\.vk\.ru)/blank\.html#[^\s]+'
+    r'https://(?:oauth|api)\.vk\.(?:com|ru)/blank\.html#[^\s]+'
 )
 
 
