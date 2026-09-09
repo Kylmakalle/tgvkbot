@@ -6,13 +6,10 @@ from aiohttp.client_exceptions import ContentTypeError
 from bot import *
 from config import *
 from vk_messages import vk_polling_tasks, vk_polling
+from vk_oauth import parse_oauth_token
 
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
-
-oauth_link = re.compile(
-    'https://(oauth|api)\.vk\.com/blank\.html#access_token=([a-zA-Z0-9._-]*)&expires_in=[0-9]*&user_id=[0-9]*')
-
 
 async def get_pages_switcher(markup, page, pages):
     if page != 0:
@@ -712,14 +709,13 @@ async def handle_text(msg: types.Message):
     user, created = await update_user_info(msg.from_user)
     tgchat, tgchat_created = await update_chat_info(msg.chat)
     if msg.chat.type == 'private':
-        m = oauth_link.search(msg.text)
-        if m:
+        token = parse_oauth_token(msg.text)
+        if token:
             if ALLOWED_USER_IDS:
                 if str(msg.from_user.id) not in ALLOWED_USER_IDS.replace(' ', '').split(','):
                     await msg.reply('⛔️ Бот недоступен для Вашего аккаунта.\nУзнать Telegram ID - /id')
                     return
             await bot.send_chat_action(msg.from_user.id, ChatActions.TYPING)
-            token = m.group(2)
             if not VkUser.objects.filter(token=token).exists():
                 try:
                     session = VkSession(access_token=token, driver=await get_driver(token))
